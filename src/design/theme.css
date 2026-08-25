@@ -1,0 +1,474 @@
+@import '@fontsource-variable/fraunces/full.css';
+@import '@fontsource-variable/inter/index.css';
+@import 'tailwindcss';
+
+/* ==========================================================================
+   Family Foundation — design tokens
+   Letterpress field manual meets navigational instrument.
+   Paper carries everything. Ink speaks. Ochre marks. Blue Ink draws.
+   ========================================================================== */
+
+@theme {
+  --color-paper: #f3eedf;
+  --color-paper-dark: #e8e0cf;
+  --color-ink: #252321;
+  --color-ochre: #d7b65a;
+  --color-blue-ink: #557b91;
+  --color-muted: #77736c;
+
+  /* Derived working inks — mixed toward the paper so they never shout. */
+  --color-paper-deep: #ded5c2;
+  --color-rule: rgba(37, 35, 33, 0.14);
+  --color-rule-strong: rgba(37, 35, 33, 0.28);
+  --color-ink-soft: rgba(37, 35, 33, 0.62);
+  --color-ochre-wash: rgba(215, 182, 90, 0.18);
+  --color-blue-wash: rgba(85, 123, 145, 0.12);
+
+  /* The two decision inks. Unmistakably green and red, but the same
+     stock as everything else on the page. */
+  --color-affirm: #5f7d5a;
+  --color-affirm-wash: rgba(95, 125, 90, 0.14);
+  --color-decline: #a6503f;
+  --color-decline-wash: rgba(166, 80, 63, 0.13);
+
+  --font-display: 'Fraunces Variable', 'Iowan Old Style', Georgia, serif;
+  --font-sans: 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  --radius-card: 14px;
+  --radius-field: 10px;
+
+  --ease-paper: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-settle: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* --------------------------------------------------------------------------
+   Base
+   -------------------------------------------------------------------------- */
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.55;
+  font-feature-settings: 'kern', 'liga', 'calt';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+}
+
+::selection {
+  background: var(--color-ochre-wash);
+  color: var(--color-ink);
+}
+
+/* Paper grain. One tiny inline turbulence, laid over the whole stage at a
+   whisper. It is the difference between "a beige website" and "a page." */
+.paper-grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.35;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23g)' opacity='0.32'/%3E%3C/svg%3E");
+}
+
+@layer components {
+/* --------------------------------------------------------------------------
+   Type
+   -------------------------------------------------------------------------- */
+
+.font-display {
+  font-family: var(--font-display);
+  font-variation-settings: 'SOFT' 40, 'WONK' 1, 'opsz' 96;
+  letter-spacing: -0.015em;
+}
+
+/* Reading-size Fraunces: lower optical size, no wonk, so long passages
+   stay calm instead of performing. */
+.prose-editorial {
+  font-family: var(--font-display);
+  font-variation-settings: 'SOFT' 30, 'WONK' 0, 'opsz' 14;
+  font-weight: 400;
+  font-size: 1.0625rem;
+  line-height: 1.68;
+  letter-spacing: 0.003em;
+}
+
+.type-eyebrow {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-weight: 560;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.type-caption {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--color-muted);
+}
+
+.type-h1 {
+  font-family: var(--font-display);
+  font-variation-settings: 'SOFT' 45, 'WONK' 1, 'opsz' 144;
+  font-weight: 460;
+  font-size: clamp(2.1rem, 9vw, 2.6rem);
+  line-height: 1.04;
+  letter-spacing: -0.028em;
+}
+
+.type-h2 {
+  font-family: var(--font-display);
+  font-variation-settings: 'SOFT' 40, 'WONK' 0, 'opsz' 48;
+  font-weight: 500;
+  font-size: 1.5rem;
+  line-height: 1.15;
+  letter-spacing: -0.018em;
+}
+
+.type-h3 {
+  font-family: var(--font-display);
+  font-variation-settings: 'SOFT' 35, 'WONK' 0, 'opsz' 24;
+  font-weight: 540;
+  font-size: 1.1rem;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+/* --------------------------------------------------------------------------
+   Surfaces
+   -------------------------------------------------------------------------- */
+
+.surface {
+  background: var(--color-paper-dark);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-card);
+}
+
+/* Print register: a hairline offset rather than a soft drop shadow. Paper
+   sits on paper; it does not levitate. */
+.surface-raised {
+  background: var(--color-paper);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-card);
+  box-shadow: 0 1px 0 0 rgba(37, 35, 33, 0.06), 0 10px 28px -18px rgba(37, 35, 33, 0.5);
+}
+
+.hairline {
+  border: 0;
+  height: 1px;
+  background: var(--color-rule);
+  margin: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Fields — a written-on line, not a UI input box
+   -------------------------------------------------------------------------- */
+
+.field {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-bottom: 1.5px solid var(--color-rule-strong);
+  border-radius: 0;
+  padding: 0.55rem 0.15rem;
+  font-family: var(--font-display);
+  font-variation-settings: 'SOFT' 30, 'WONK' 0, 'opsz' 20;
+  font-size: 1.15rem;
+  font-weight: 450;
+  color: var(--color-ink);
+  outline: none;
+  transition: border-color 220ms var(--ease-paper), background-color 220ms var(--ease-paper);
+}
+
+.field::placeholder {
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  font-weight: 400;
+  color: color-mix(in srgb, var(--color-muted) 62%, transparent);
+  font-variation-settings: normal;
+}
+
+.field:focus {
+  border-bottom-color: var(--color-ochre);
+  background: linear-gradient(to bottom, transparent 62%, var(--color-ochre-wash));
+}
+
+.field-area {
+  width: 100%;
+  background: var(--color-paper);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-field);
+  padding: 0.85rem 0.9rem;
+  font-family: var(--font-display);
+  font-variation-settings: 'SOFT' 30, 'WONK' 0, 'opsz' 14;
+  font-size: 1.03rem;
+  line-height: 1.6;
+  font-weight: 420;
+  color: var(--color-ink);
+  outline: none;
+  resize: none;
+  transition: border-color 220ms var(--ease-paper), box-shadow 220ms var(--ease-paper);
+}
+
+.field-area::placeholder {
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  color: color-mix(in srgb, var(--color-muted) 62%, transparent);
+  font-variation-settings: normal;
+}
+
+.field-area:focus {
+  border-color: var(--color-ochre);
+  box-shadow: 0 0 0 3px var(--color-ochre-wash);
+}
+
+/* --------------------------------------------------------------------------
+   Buttons
+   -------------------------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  font-weight: 540;
+  letter-spacing: -0.005em;
+  border-radius: 999px;
+  padding: 0.8rem 1.35rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 160ms var(--ease-paper), background-color 200ms var(--ease-paper),
+    border-color 200ms var(--ease-paper), opacity 200ms var(--ease-paper);
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.975);
+}
+
+.btn:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--color-ink);
+  border-color: var(--color-rule-strong);
+}
+
+.btn-quiet {
+  background: transparent;
+  color: var(--color-muted);
+  border-color: transparent;
+  padding: 0.6rem 0.75rem;
+}
+
+.btn-quiet:hover:not(:disabled) {
+  color: var(--color-ink);
+}
+}
+
+/* --------------------------------------------------------------------------
+   Focus — visible, on-brand, keyboard only
+   -------------------------------------------------------------------------- */
+
+:focus-visible {
+  outline: 2px solid var(--color-ochre);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* Fields already show focus in ochre on their own edge; a second ring
+   around them just reads as a box that is not really there. */
+.field:focus-visible,
+.field-area:focus-visible,
+.inline-edit:focus-visible {
+  outline: none;
+}
+
+/* --------------------------------------------------------------------------
+   Scroll
+   -------------------------------------------------------------------------- */
+
+@layer components {
+.scroll-quiet {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scroll-quiet::-webkit-scrollbar {
+  display: none;
+}
+}
+
+/* --------------------------------------------------------------------------
+   Motion
+   -------------------------------------------------------------------------- */
+
+@keyframes ff-blink {
+  0%, 45% { opacity: 1; }
+  50%, 95% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes ff-rotate {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes ff-counter-rotate {
+  to { transform: rotate(-360deg); }
+}
+
+@keyframes ff-draw {
+  from { stroke-dashoffset: var(--dash, 200); }
+  to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+@layer components {
+/* --------------------------------------------------------------------------
+   Inline editing — a word in a sentence you can write over
+   -------------------------------------------------------------------------- */
+
+.inline-edit {
+  display: inline;
+  min-width: 3ch;
+  padding: 0 0.06em;
+  border-bottom: 1.5px solid var(--color-ochre);
+  background: var(--color-ochre-wash);
+  outline: none;
+  cursor: text;
+  transition: background-color 200ms var(--ease-paper);
+}
+
+.inline-edit:focus {
+  background: color-mix(in srgb, var(--color-ochre) 30%, transparent);
+}
+
+.inline-edit:empty::before {
+  content: attr(data-placeholder);
+  color: var(--color-muted);
+  opacity: 0.75;
+}
+}
+
+/* --------------------------------------------------------------------------
+   Print — "Save a copy" produces a document, not a screenshot of a phone
+   -------------------------------------------------------------------------- */
+
+@media print {
+  @page {
+    margin: 20mm 18mm;
+  }
+
+  html,
+  body,
+  #root {
+    height: auto !important;
+    min-height: 0 !important;
+    background: #fff !important;
+  }
+
+  .app-stage {
+    display: block !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  /* Unwrap the held device: no frame, no clipping, no fixed height. */
+  .app-frame {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  .scroll-quiet,
+  .app-frame > div,
+  [class*='overflow-'] {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  /* The document's own nav bar carries print-hide; the constitution's
+     <header> and <footer> are part of the document and must survive. */
+  .paper-grain::after,
+  .print-hide {
+    display: none !important;
+  }
+
+  /* Only the finished document goes on paper, and only its body — not the
+     section heading that introduces it on screen. */
+  [data-section]:not([data-section='covenant']) {
+    display: none !important;
+  }
+
+  [data-section='covenant'] {
+    padding: 0 !important;
+  }
+
+  [data-section='covenant'] > *:not(:last-child) {
+    display: none !important;
+  }
+
+  .surface-raised {
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  .prose-editorial,
+  .type-h2,
+  .type-h3 {
+    color: #000 !important;
+  }
+
+  .type-caption,
+  .type-eyebrow {
+    color: #444 !important;
+  }
+
+  /* Keep a clause and its signature block from splitting across pages. */
+  section,
+  li,
+  footer {
+    break-inside: avoid;
+  }
+}
