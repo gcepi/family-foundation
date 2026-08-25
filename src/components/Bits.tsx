@@ -26,25 +26,24 @@ export function Blank({ value, width = '7ch' }: { value?: string; width?: string
   )
 }
 
-/** Progress without numbers: one tick per step, the current one filled. */
+/**
+ * Progress as one continuous bar rather than a row of separate ticks — a
+ * single line filling is easier to read at a glance than counting segments.
+ */
 export function Ticks({ total, index }: { total: number; index: number }) {
+  const pct = total > 0 ? Math.min(100, Math.max(0, (index / total) * 100)) : 0
   return (
-    <div className="flex items-center gap-1.5" role="presentation">
-      {Array.from({ length: total }).map((_, i) => (
-        <span
-          key={i}
-          className="h-[3px] rounded-full transition-all duration-300"
-          style={{
-            width: i === index ? 20 : 8,
-            background:
-              i < index
-                ? 'var(--color-ochre)'
-                : i === index
-                  ? 'var(--color-ink)'
-                  : 'var(--color-rule-strong)',
-          }}
-        />
-      ))}
+    <div
+      className="h-[3px] w-28 overflow-hidden rounded-full bg-[var(--color-rule-strong)]"
+      role="progressbar"
+      aria-valuenow={index}
+      aria-valuemin={0}
+      aria-valuemax={total}
+    >
+      <div
+        className="h-full rounded-full bg-[var(--color-ochre)] transition-[width] duration-500 ease-out"
+        style={{ width: `${pct}%` }}
+      />
     </div>
   )
 }

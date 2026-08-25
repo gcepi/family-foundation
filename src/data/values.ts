@@ -5,59 +5,60 @@ import type { ValueCard } from '~/lib/types'
  *
  * The academic label for each value is deliberately absent — a family
  * sorting these should be weighing the thing itself, not a vocabulary word.
- * Blurbs are synonyms rather than examples, so nobody sorts a scenario they
- * happen to recognize instead of the value underneath it.
+ * Blurbs are one short phrase, not a list of synonyms: these are compared
+ * two at a time on a narrow screen, and a family reading them aloud needs
+ * something they can finish in one breath.
  */
 export const VALUES: ValueCard[] = [
   {
     id: 'own-minds',
     title: 'Thinking for ourselves',
-    blurb: 'Making up our own minds. Choosing, exploring, working it out on our own.',
+    blurb: 'Making up our own minds.',
   },
   {
     id: 'new-things',
     title: 'Trying new things',
-    blurb: 'Adventure, surprise, a real challenge — and the nerve to take it on.',
+    blurb: 'Adventure, and the nerve to take it on.',
   },
   {
     id: 'enjoying-life',
     title: 'Enjoying life',
-    blurb: 'Delight, warmth, savoring the good parts of a day while they are here.',
+    blurb: 'Delight in an ordinary day.',
   },
   {
     id: 'getting-good',
     title: 'Getting good at things',
-    blurb: 'Skill, craft, practice. Work we would be glad to put our name on.',
+    blurb: 'Skill worth putting our name on.',
   },
   {
     id: 'a-say',
     title: 'Having a say in what happens to us',
-    blurb: 'Standing, influence, a hand on the wheel of our own life.',
+    blurb: 'A hand on the wheel of our own life.',
   },
   {
     id: 'safe-and-steady',
     title: 'Feeling safe and steady',
-    blurb: 'Calm, stability, a home that holds when everything else shakes.',
+    blurb: 'A home that holds when things shake.',
   },
   {
     id: 'not-letting-down',
     title: 'Not letting people down',
-    blurb: 'Restraint, consideration, keeping our word to the people counting on us.',
+    blurb: 'Keeping our word.',
   },
   {
     id: 'what-we-were-handed',
     title: 'Keeping what we were handed',
-    blurb: 'Roots, inheritance, the customs and convictions passed down to us.',
+    blurb: 'The customs passed down to us.',
   },
   {
     id: 'our-people',
     title: 'Taking care of our people',
-    blurb: 'Loyalty, kindness, showing up for the ones closest to us.',
+    blurb: 'Showing up for the ones closest to us.',
   },
   {
     id: 'everyone',
     title: 'Looking out for everyone, not just us',
-    blurb: 'Fairness, and care for strangers and for the world we all share.',
+    blurb: 'Care that reaches past our own door.',
   },
 ]
 

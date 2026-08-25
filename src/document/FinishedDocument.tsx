@@ -1,8 +1,9 @@
 import { useStore } from '~/app/store'
 import { useStub } from '~/components/Stub'
-import { Preamble } from '~/activities/OriginActivity'
+import { Preamble } from '~/document/Preamble'
 import { valueById } from '~/data/values'
 import { decap, toOurVoice } from '~/lib/assistant'
+import { downloadMarkdown } from '~/lib/export'
 import { SealMark } from '~/illustrations'
 
 const today = () =>
@@ -109,27 +110,20 @@ export function FinishedDocument() {
       </article>
 
       <div className="print-hide mt-6 flex flex-col gap-2.5">
-        <button
-          type="button"
-          className="btn btn-primary w-full"
-          onClick={() => window.print()}
-        >
-          Save a copy
+        <button type="button" className="btn btn-primary w-full" onClick={() => window.print()}>
+          Download PDF
+        </button>
+        <button type="button" className="btn btn-ghost w-full" onClick={() => downloadMarkdown(doc)}>
+          Download Markdown
         </button>
         <button
           type="button"
           className="btn btn-ghost w-full"
-          onClick={() =>
-            stub('This will email the finished document to everyone who signed it.')
-          }
+          onClick={() => stub('This will email the finished document to everyone who signed it.')}
         >
-          Send it home
+          Email to the family
         </button>
       </div>
-
-      <p className="type-caption print-hide mt-5 max-w-[34ch]">
-        Nothing here is final. Families change, and so does what they would hand over.
-      </p>
     </div>
   )
 }

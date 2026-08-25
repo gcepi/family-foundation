@@ -4,6 +4,7 @@ import { Screen } from '~/app/Shell'
 import { Astrolabe } from '~/illustrations'
 import { SECTION_MARKS } from '~/illustrations/marks'
 import { ArrowRight, Check, Lock } from '~/components/Bits'
+import { downloadMarkdown } from '~/lib/export'
 import type { SectionId } from '~/lib/types'
 
 type Row = {
@@ -14,7 +15,7 @@ type Row = {
 }
 
 export function Cover() {
-  const { doc, openDocument, goSetup, unlocked, freeNav, setFreeNav, dispatch } = useStore()
+  const { doc, openDocument, goSetup, unlocked } = useStore()
   const c = doc.completed
 
   const rows: Row[] = [
@@ -219,42 +220,32 @@ export function Cover() {
           </>
         )}
 
-        {/* Prototype controls. Deliberately at the bottom of the front cover and
-            nowhere else — they are not part of the experience being tested. */}
-        <div className="mt-auto border-t border-dashed border-[var(--color-rule-strong)] pt-4" style={{ marginTop: 'auto', paddingTop: '1.75rem' }}>
-          <p className="type-eyebrow mb-3">Prototype</p>
-          <label className="flex cursor-pointer items-center justify-between gap-3 py-1.5">
-            <span className="type-caption max-w-[24ch]">
-              Review mode — open every section regardless of progress
-            </span>
-            <span
-              className="relative h-6 w-11 shrink-0 rounded-full transition-colors duration-300"
-              style={{ background: freeNav ? 'var(--color-ochre)' : 'var(--color-rule-strong)' }}
+        {doc.completed.constitution && (
+          <div className="mt-auto pt-8">
+            <button
+              type="button"
+              onClick={() => downloadMarkdown(doc)}
+              className="btn btn-ghost w-full"
             >
-              <input
-                type="checkbox"
-                checked={freeNav}
-                onChange={(e) => setFreeNav(e.target.checked)}
-                className="sr-only"
-              />
-              <span
-                className="absolute top-[3px] h-[18px] w-[18px] rounded-full bg-[var(--color-paper)] shadow-sm transition-all duration-300"
-                style={{ left: freeNav ? 23 : 3 }}
-              />
-            </span>
-          </label>
-          <button
-            type="button"
-            onClick={() => {
-              if (confirm('Clear everything this family has written and start over?')) {
-                dispatch({ type: 'reset' })
-              }
-            }}
-            className="type-caption mt-2 underline decoration-[var(--color-rule-strong)] underline-offset-4 transition-colors hover:text-[var(--color-decline)]"
-          >
-            Start over
-          </button>
-        </div>
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path
+                  d="M8 2v8m0 0 3-3m-3 3L5 7"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M2.5 11.5v1a1.5 1.5 0 0 0 1.5 1.5h8a1.5 1.5 0 0 0 1.5-1.5v-1"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+              </svg>
+              Download
+            </button>
+          </div>
+        )}
       </div>
     </Screen>
   )

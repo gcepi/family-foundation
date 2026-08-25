@@ -222,13 +222,7 @@ export function Dial({ size = 56 }: { size?: number }) {
   )
 }
 
-/** A hairline rule with a small instrument tick at its center. */
+/** A single hairline rule. Nothing in the middle of it. */
 export function RuleWithTick({ className = '' }: { className?: string }) {
-  return (
-    <svg className={className} width="100%" height="9" viewBox="0 0 300 9" preserveAspectRatio="none" aria-hidden="true">
-      <line x1="0" y1="4.5" x2="140" y2="4.5" stroke="var(--color-rule-strong)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-      <line x1="160" y1="4.5" x2="300" y2="4.5" stroke="var(--color-rule-strong)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-      <circle cx="150" cy="4.5" r="2.4" fill={OCHRE} />
-    </svg>
-  )
+  return <hr className={`hairline ${className}`} />
 }

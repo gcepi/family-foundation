@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useStore } from '~/app/store'
 import { Check, Cross } from '~/components/Bits'
@@ -158,11 +159,28 @@ export function PracticeCards({ editable = true }: { editable?: boolean }) {
         </p>
       )}
 
-      <AnimatePresence>
-        {open && <CardDetail id={open} onClose={() => setOpen(null)} />}
-      </AnimatePresence>
+      {/* Rendered into the app frame rather than here. This lives inside a
+          `relative` scroll container, and an absolutely-positioned overlay
+          inside one of those anchors to the top of the scrollable content,
+          not to the screen. */}
+      <Overlay>
+        <AnimatePresence>
+          {open && <CardDetail id={open} onClose={() => setOpen(null)} />}
+        </AnimatePresence>
+      </Overlay>
     </>
   )
+}
+
+/** Puts overlay content at the app frame, outside any scrolling ancestor. */
+function Overlay({ children }: { children: React.ReactNode }) {
+  /* Resolved once, lazily, rather than in an effect — the frame is already in
+     the document by the time these cards render. */
+  const [host] = useState<Element | null>(() =>
+    typeof document === 'undefined' ? null : (document.querySelector('.app-frame') ?? document.body),
+  )
+  if (!host) return null
+  return createPortal(children, host)
 }
 
 const Grip = () => (
@@ -186,45 +204,57 @@ function CardDetail({ id, onClose }: { id: string; onClose: () => void }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="absolute inset-0 z-40 flex items-end bg-[rgba(37,35,33,0.32)] md:rounded-[34px]"
+      transition={{ duration: 0.18 }}
+      className="absolute inset-0 z-40 flex items-center justify-center bg-[rgba(37,35,33,0.3)] p-3 md:rounded-[34px]"
       onClick={onClose}
       role="dialog"
       aria-label={p.thing}
     >
+      {/* Grows from card-sized to full. A shared layoutId would be a truer
+          morph, but the small card lives inside a scrolling container and
+          measuring across that boundary lands the panel in the wrong place. */}
       <motion.div
-        initial={{ y: '100%' }}
-        animate={{ y: 0 }}
-        exit={{ y: '100%' }}
-        transition={{ type: 'spring', stiffness: 340, damping: 36 }}
+        initial={{ scale: 0.82, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
-        className="paper-grain relative max-h-[80%] w-full overflow-y-auto rounded-t-[24px] border-t border-[var(--color-rule-strong)] bg-[var(--color-paper)] px-6 pt-5 pb-[max(1.75rem,env(safe-area-inset-bottom))]"
+        transition={{ type: 'spring', stiffness: 420, damping: 36, mass: 0.7 }}
+        className="paper-grain surface-raised relative flex h-full w-full flex-col overflow-hidden"
       >
-        <div className="mx-auto mb-5 h-1 w-9 rounded-full bg-[var(--color-rule-strong)]" />
-        <div className="relative z-1">
+        <motion.div
+          initial={{ rotateY: -75, opacity: 0 }}
+          animate={{ rotateY: 0, opacity: 1 }}
+          transition={{ delay: 0.14, duration: 0.34, ease: [0.16, 1, 0.3, 1] }}
+          style={{ transformPerspective: 900 }}
+          className="scroll-quiet relative z-1 min-h-0 flex-1 overflow-y-auto px-6 pt-6 pb-4"
+        >
           <p
             className="type-eyebrow"
             style={{ color: kept ? 'var(--color-affirm)' : 'var(--color-decline)' }}
           >
-            {kept ? 'Taken' : 'Refused'} · {participantName(p.participantId)}
+            {kept ? 'Accepted' : 'Refused'} · {participantName(p.participantId)}
           </p>
-          <h3 className="type-h2 mt-2">{p.thing}</h3>
+          <h3 className="type-h1 mt-2">{p.thing}</h3>
+          <hr className="hairline my-6" />
 
           {kept ? (
-            <div className="mt-5 flex flex-col gap-3">
+            <div className="flex flex-col gap-5">
               <Line label="Now you can" text="hand it over" />
               <Line label="You'll no longer have to" text={p.relief} />
               <Line label="You're no longer able to" text={p.bargain?.noLongerAble ?? ''} dim />
               <Line label="Now you'll have to" text={p.bargain?.nowHaveTo ?? ''} dim />
             </div>
           ) : (
-            <p className="prose-editorial mt-5">
+            <p className="prose-editorial">
               We will not {p.refusal?.willNot}, and will still have to{' '}
               {p.refusal?.willStillHaveTo}, so we will still be able to {p.refusal?.soStillAble},
               and be able to {p.refusal?.andAble}.
             </p>
           )}
+        </motion.div>
 
-          <button type="button" onClick={onClose} className="btn btn-ghost mt-7 w-full">
+        <div className="relative z-1 shrink-0 border-t border-[var(--color-rule)] px-6 py-3.5">
+          <button type="button" onClick={onClose} className="btn btn-ghost w-full">
             Close
           </button>
         </div>

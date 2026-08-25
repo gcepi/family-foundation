@@ -25,12 +25,14 @@ const STORAGE_KEY = 'family-foundation.draft.v1'
 type Action =
   | { type: 'setParticipants'; participants: Participant[]; familyName: string }
   | { type: 'patchOrigin'; patch: Partial<FamilyDocument['origin']> }
+  | { type: 'setOriginStep'; step: number }
   | { type: 'completeOrigin' }
   | { type: 'setPractices'; practices: Practice[] }
   | { type: 'patchPractice'; id: string; patch: Partial<Practice> }
   | { type: 'setPracticeOrder'; order: string[] }
   | { type: 'completePractices' }
   | { type: 'setPraxis'; reflection?: string; statement?: string }
+  | { type: 'patchPraxisParts'; patch: Partial<FamilyDocument['praxisParts']> }
   | { type: 'completePraxis' }
   | { type: 'setRanking'; ranking: string[] }
   | { type: 'setTelos'; telos: string }
@@ -49,6 +51,8 @@ function reducer(state: FamilyDocument, action: Action): FamilyDocument {
       }
     case 'patchOrigin':
       return { ...state, origin: { ...state.origin, ...action.patch } }
+    case 'setOriginStep':
+      return { ...state, originStep: action.step }
     case 'completeOrigin':
       return { ...state, completed: { ...state.completed, origin: true } }
     case 'setPractices':
@@ -74,6 +78,8 @@ function reducer(state: FamilyDocument, action: Action): FamilyDocument {
         praxisReflection: action.reflection ?? state.praxisReflection,
         praxisStatement: action.statement ?? state.praxisStatement,
       }
+    case 'patchPraxisParts':
+      return { ...state, praxisParts: { ...state.praxisParts, ...action.patch } }
     case 'completePraxis':
       return { ...state, completed: { ...state.completed, praxis: true } }
     case 'setRanking':
@@ -102,15 +108,12 @@ function reducer(state: FamilyDocument, action: Action): FamilyDocument {
 
 export type Stage = 'cover' | 'setup' | 'document'
 
-export type ActivityId =
-  | 'origin'
-  | 'brainstorm'
-  | 'practices'
-  | 'bargains'
-  | 'arrange'
-  | 'praxis'
-  | 'values'
-  | null
+/**
+ * Only two activities take over the screen. Origin and Praxis are written
+ * directly into the document, because the point of them is that the family
+ * watches their own page fill in.
+ */
+export type ActivityId = 'practices' | 'values' | null
 
 type Nav = {
   stage: Stage
@@ -133,9 +136,6 @@ type Store = {
   clearJump: () => void
   openActivity: (id: Exclude<ActivityId, null>) => void
   closeActivity: () => void
-  /** Prototype affordance: ignore sequential locking so any screen is reviewable. */
-  freeNav: boolean
-  setFreeNav: (v: boolean) => void
   unlocked: (section: SectionId) => boolean
   participantName: (id: string) => string
 }
@@ -156,8 +156,6 @@ function load(): FamilyDocument {
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [doc, dispatch] = useReducer(reducer, undefined, load)
   const [nav, setNav] = useState<Nav>({ stage: 'cover', jumpTo: null, activity: null })
-  const [freeNav, setFreeNav] = useState(false)
-
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(doc))
@@ -188,7 +186,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const unlocked = useCallback(
     (section: SectionId) => {
-      if (freeNav) return true
       switch (section) {
         case 'portrait':
           return doc.completed.setup
@@ -202,7 +199,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           return false
       }
     },
-    [doc.completed, freeNav],
+    [doc.completed],
   )
 
   const participantName = useCallback(
@@ -221,12 +218,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       clearJump,
       openActivity,
       closeActivity,
-      freeNav,
-      setFreeNav,
       unlocked,
       participantName,
     }),
-    [doc, nav, goCover, goSetup, openDocument, clearJump, openActivity, closeActivity, freeNav, unlocked, participantName],
+    [doc, nav, goCover, goSetup, openDocument, clearJump, openActivity, closeActivity, unlocked, participantName],
   )
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>

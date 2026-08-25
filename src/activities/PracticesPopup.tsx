@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useStore } from '~/app/store'
-import { ActivitySheet } from '~/components/ActivitySheet'
+import { Popup } from '~/components/Popup'
 import { ArrowRight, Check, Cross, Ticks } from '~/components/Bits'
 import { InlineEdit } from '~/components/InlineEdit'
 import { Thinking } from '~/components/Assistant'
 import { RuleWithTick } from '~/illustrations'
-import { PracticeCards } from '~/document/PracticeCards'
 import { DOMAINS } from '~/data/domains'
 import { composeBargain, composeRefusal, think } from '~/lib/assistant'
 import type { Practice, Refusal } from '~/lib/types'
@@ -20,20 +19,14 @@ const fade = {
   transition: { duration: 0.34, ease: [0.16, 1, 0.3, 1] as const },
 }
 
-type Phase = 'brainstorm' | 'input' | 'teaching' | 'composing' | 'decide' | 'done'
+type Phase = 'brainstorm' | 'input' | 'teaching' | 'composing' | 'decide'
 
-export function PracticesActivity() {
+export function PracticesPopup() {
   const { doc, dispatch, closeActivity } = useStore()
   const people = doc.participants
 
   const resuming = doc.practices.length > 0
-  const [phase, setPhase] = useState<Phase>(
-    resuming
-      ? doc.practices.some((p) => p.decision === 'pending')
-        ? 'decide'
-        : 'done'
-      : 'brainstorm',
-  )
+  const [phase, setPhase] = useState<Phase>(resuming ? 'decide' : 'brainstorm')
   const [who, setWho] = useState(0)
   const [drafts, setDrafts] = useState<Record<string, { thing: string; relief: string }>>({})
 
@@ -73,14 +66,14 @@ export function PracticesActivity() {
   const pending = doc.practices.filter((p) => p.decision === 'pending')
   const decidedCount = doc.practices.length - pending.length
 
+  /* Every bargain decided: the cards belong to the document now, so hand
+     them over and get out of the way. */
   useEffect(() => {
-    if (phase === 'decide' && doc.practices.length > 0 && pending.length === 0) setPhase('done')
-  }, [phase, pending.length, doc.practices.length])
-
-  const finish = () => {
+    if (phase !== 'decide' || doc.practices.length === 0 || pending.length > 0) return
     dispatch({ type: 'completePractices' })
     closeActivity()
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, pending.length, doc.practices.length])
 
   const backTo: Record<Phase, Phase | null> = {
     brainstorm: null,
@@ -88,11 +81,10 @@ export function PracticesActivity() {
     teaching: 'input',
     composing: null,
     decide: null,
-    done: null,
   }
 
   return (
-    <ActivitySheet
+    <Popup
       title="Family Practices"
       onClose={closeActivity}
       onBack={
@@ -112,7 +104,7 @@ export function PracticesActivity() {
       footer={
         phase === 'brainstorm' ? (
           <button type="button" className="btn btn-primary w-full" onClick={() => setPhase('input')}>
-            Everyone has their favorite
+            Continue
             <ArrowRight />
           </button>
         ) : phase === 'input' ? (
@@ -125,16 +117,12 @@ export function PracticesActivity() {
               else setPhase('teaching')
             }}
           >
-            {who < people.length - 1 ? 'Next' : 'Everyone has answered'}
+            Next
             <ArrowRight />
           </button>
         ) : phase === 'teaching' ? (
           <button type="button" className="btn btn-primary w-full" onClick={() => setPhase('composing')}>
-            Show us the rest of the bargain
-          </button>
-        ) : phase === 'done' ? (
-          <button type="button" className="btn btn-primary w-full" onClick={finish}>
-            Write them into the document
+            Continue
           </button>
         ) : undefined
       }
@@ -185,20 +173,8 @@ export function PracticesActivity() {
         )}
 
         {phase === 'decide' && pending[0] && <Decide key={pending[0].id} practice={pending[0]} />}
-
-        {phase === 'done' && (
-          <motion.div key="done" {...fade} className="pt-4">
-            <h2 className="type-h1">What you decided</h2>
-            <RuleWithTick className="my-5" />
-            <p className="type-caption mb-6 max-w-[34ch]">
-              Everything you weighed, kept and refused alike. Put them in whatever order your
-              family thinks is right.
-            </p>
-            <PracticeCards />
-          </motion.div>
-        )}
       </AnimatePresence>
-    </ActivitySheet>
+    </Popup>
   )
 }
 
@@ -272,7 +248,7 @@ function Brainstorm() {
             {mm}:{ss}
           </span>
           <span className="type-caption">
-            {left === 0 ? 'Time. Everyone circle one.' : running ? 'Tap to pause' : 'Tap to start'}
+            {left === 0 ? "Time's up." : running ? 'Tap to pause' : 'Tap to start'}
           </span>
         </span>
       </button>
@@ -433,7 +409,7 @@ function Decide({ practice }: { practice: Practice }) {
                 Back
               </button>
               <button type="button" className="btn btn-primary flex-1" onClick={commitRefusal}>
-                That's ours
+                Save
               </button>
             </div>
           </>
@@ -491,7 +467,7 @@ function Decide({ practice }: { practice: Practice }) {
           }}
         >
           <Cross size={17} />
-          No deal
+          Refuse
         </button>
         <button
           type="button"
@@ -504,7 +480,7 @@ function Decide({ practice }: { practice: Practice }) {
           }}
         >
           <Check size={17} />
-          We'll take it
+          Accept
         </button>
       </div>
     </motion.div>

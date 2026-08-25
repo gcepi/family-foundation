@@ -62,9 +62,25 @@ export type FamilyDocument = {
   practices: Practice[]
   /** Order of the practice cards after the family rearranges them. */
   practiceOrder: string[]
+  /**
+   * How far into the Origin questions the family has got. Kept here rather
+   * than in the component so leaving for the contents page and coming back
+   * lands them where they were.
+   */
+  originStep: number
   /** What the assistant noticed across the kept and refused bargains. */
   praxisReflection: string
-  /** What the family writes back. */
+  /**
+   * The praxis, asked as four short questions rather than one paragraph with
+   * blanks in it — a blank in a textarea is a worse prompt than a question.
+   */
+  praxisParts: {
+    handOver: string
+    soThat: string
+    notHandOver: string
+    because: string
+  }
+  /** The four parts assembled, and editable once assembled. */
   praxisStatement: string
   /** Value ids, most important first. */
   valueRanking: string[]
@@ -90,7 +106,9 @@ export const emptyDocument = (): FamilyDocument => ({
   },
   practices: [],
   practiceOrder: [],
+  originStep: 0,
   praxisReflection: '',
+  praxisParts: { handOver: '', soThat: '', notHandOver: '', because: '' },
   praxisStatement: '',
   valueRanking: [],
   telosSummary: '',

@@ -5,10 +5,8 @@ import { Shell } from '~/app/Shell'
 import { Cover } from '~/app/Cover'
 import { Setup } from '~/app/Setup'
 import { Document } from '~/document/Document'
-import { OriginActivity } from '~/activities/OriginActivity'
-import { PracticesActivity } from '~/activities/PracticesActivity'
-import { PraxisActivity } from '~/activities/PraxisActivity'
-import { ValuesActivity } from '~/activities/ValuesActivity'
+import { PracticesPopup } from '~/activities/PracticesPopup'
+import { ValuesPopup } from '~/activities/ValuesPopup'
 
 /**
  * Two stages and an overlay.
@@ -66,10 +64,8 @@ function Stages() {
       </div>
 
       <AnimatePresence>
-        {nav.activity === 'origin' && <OriginActivity key="a-origin" />}
-        {nav.activity === 'practices' && <PracticesActivity key="a-practices" />}
-        {nav.activity === 'praxis' && <PraxisActivity key="a-praxis" />}
-        {nav.activity === 'values' && <ValuesActivity key="a-values" />}
+        {nav.activity === 'practices' && <PracticesPopup key="a-practices" />}
+        {nav.activity === 'values' && <ValuesPopup key="a-values" />}
       </AnimatePresence>
     </>
   )
