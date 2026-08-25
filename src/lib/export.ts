@@ -76,14 +76,42 @@ export function toMarkdown(doc: FamilyDocument): string {
   return out.join('\n')
 }
 
-/** Hands the browser a file. Nothing leaves the device. */
-export function downloadMarkdown(doc: FamilyDocument) {
+/**
+ * Hands the viewer the file. Nothing leaves the device either way.
+ *
+ * Two paths, because the app runs in two places. On a normal host an anchor
+ * with a blob URL is the download. Inside the claude.ai artifact viewer that
+ * anchor is inert by design, and the file has to be offered through the
+ * `downloads` capability, which shows the viewer a confirmation first.
+ */
+type DownloadsNamespace = { save: (r: { filename: string; data: string }) => Promise<unknown> }
+type ClaudeHost = { use?: (name: string) => Promise<DownloadsNamespace | null> }
+
+export async function downloadMarkdown(doc: FamilyDocument) {
   const name = doc.origin.familyName.trim().toLowerCase().replace(/\s+/g, '-') || 'family'
-  const blob = new Blob([toMarkdown(doc)], { type: 'text/markdown;charset=utf-8' })
+  const filename = `${name}-constitution.md`
+  const data = toMarkdown(doc)
+
+  const host = (window as unknown as { claude?: ClaudeHost }).claude
+  if (host?.use) {
+    try {
+      const downloads = await host.use('downloads')
+      if (downloads) {
+        /* The viewer may decline; that is an answer, not a failure to route
+           around, so this path ends here either way. */
+        await downloads.save({ filename, data }).catch(() => {})
+        return
+      }
+    } catch {
+      /* Capability unavailable in this view — fall through to the anchor. */
+    }
+  }
+
+  const blob = new Blob([data], { type: 'text/markdown;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `${name}-constitution.md`
+  a.download = filename
   document.body.appendChild(a)
   a.click()
   a.remove()
