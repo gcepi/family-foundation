@@ -1,56 +1,38 @@
 import { useEffect, useState } from 'react'
-import { Reorder, useDragControls } from 'framer-motion'
+import { AnimatePresence, Reorder, motion, useDragControls } from 'framer-motion'
 import { useStore } from '~/app/store'
-import { AssistantReveal } from '~/components/Assistant'
-import { InlineEdit } from '~/components/InlineEdit'
-import { ArrowRight } from '~/components/Bits'
+import { FoodForThought } from '~/components/FoodForThought'
 import { valueById } from '~/data/values'
-import { composeTelos, think } from '~/lib/assistant'
+import { composeValuesReflection, think } from '~/lib/assistant'
 
 /**
  * After the sort, the values come home to the document.
  *
- * The sorting experience does not live here — it happened once, in its own
- * card, and what remains is the result: a list the family can still argue
- * about by dragging, and a paragraph they can edit.
+ * The sorting does not live here — it happened once, in its own card. What
+ * remains is the result: a list the family can still argue about by
+ * dragging, and a reading of it they can edit or ask for again.
  */
-export function ValuesSection() {
-  const { doc, dispatch, openActivity } = useStore()
+export function ValuesSection({ onApplyToTelos }: { onApplyToTelos: () => void }) {
+  const { doc, openActivity } = useStore()
 
   if (!doc.valueRanking.length) {
     return (
-      <div>
-        <p className="type-caption mb-5 max-w-[34ch]">
-          Two values at a time. Choose the one that matters more, and keep choosing until they
-          are all in order.
-        </p>
-        <button
-          type="button"
-          className="btn btn-primary w-full"
-          onClick={() => openActivity('values')}
-        >
-          Sort your values
-          <ArrowRight />
-        </button>
-      </div>
+      <button
+        type="button"
+        className="btn btn-primary w-full"
+        onClick={() => openActivity('values')}
+      >
+        Start Activity
+      </button>
     )
   }
 
   return (
     <div>
       <SortedList />
-      <TelosBlock />
-      <button
-        type="button"
-        onClick={() => {
-          dispatch({ type: 'setRanking', ranking: [] })
-          dispatch({ type: 'setTelos', telos: '' })
-          openActivity('values')
-        }}
-        className="type-caption mt-6 underline decoration-[var(--color-rule-strong)] underline-offset-4 transition-colors hover:text-[var(--color-ink)]"
-      >
-        Sort again
-      </button>
+      <div className="mt-8">
+        <Reading onApplyToTelos={onApplyToTelos} />
+      </div>
     </div>
   )
 }
@@ -59,6 +41,9 @@ export function ValuesSection() {
 
 function SortedList() {
   const { doc, dispatch } = useStore()
+  /* Collapsing the section unmounts this list, so every card turns back to
+     its title on its own — reopening shows the ranking, not ten sentences. */
+  const [flipped, setFlipped] = useState<string[]>([])
 
   return (
     <Reorder.Group
@@ -68,13 +53,31 @@ function SortedList() {
       className="flex list-none flex-col gap-2"
     >
       {doc.valueRanking.map((id, i) => (
-        <ValueRow key={id} id={id} isTop={i < 3} />
+        <ValueRow
+          key={id}
+          id={id}
+          isTop={i < 3}
+          flipped={flipped.includes(id)}
+          onFlip={() =>
+            setFlipped((f) => (f.includes(id) ? f.filter((x) => x !== id) : [...f, id]))
+          }
+        />
       ))}
     </Reorder.Group>
   )
 }
 
-function ValueRow({ id, isTop }: { id: string; isTop: boolean }) {
+function ValueRow({
+  id,
+  isTop,
+  flipped,
+  onFlip,
+}: {
+  id: string
+  isTop: boolean
+  flipped: boolean
+  onFlip: () => void
+}) {
   const controls = useDragControls()
   const v = valueById(id)
   if (!v) return null
@@ -85,7 +88,10 @@ function ValueRow({ id, isTop }: { id: string; isTop: boolean }) {
       dragListener={false}
       dragControls={controls}
       className="flex items-center gap-3 px-4 py-3"
+      /* Every card is tall enough for the longest definition, so turning one
+         over reveals text instead of pushing the list around. */
       style={{
+        minHeight: '5.25rem',
         background: isTop ? 'var(--color-ochre-wash)' : 'var(--color-paper-dark)',
         border: `1px solid ${
           isTop ? 'color-mix(in srgb, var(--color-ochre) 40%, transparent)' : 'var(--color-rule)'
@@ -93,9 +99,42 @@ function ValueRow({ id, isTop }: { id: string; isTop: boolean }) {
         borderRadius: 'var(--radius-card)',
       }}
     >
-      <span className="min-w-0 flex-1">
-        <span className="type-h3 block leading-snug">{v.title}</span>
-      </span>
+      {/* Tap to turn the card over and read what it means; tap again to turn
+          it back. The handle still drags, so reordering is unaffected. */}
+      <button
+        type="button"
+        onClick={onFlip}
+        aria-expanded={flipped}
+        className="min-w-0 flex-1 text-left"
+      >
+        <AnimatePresence mode="wait" initial={false}>
+          {flipped ? (
+            <motion.span
+              key="back"
+              initial={{ opacity: 0, rotateX: -70 }}
+              animate={{ opacity: 1, rotateX: 0 }}
+              exit={{ opacity: 0, rotateX: 70 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              style={{ transformPerspective: 600 }}
+              className="type-caption block leading-snug text-[var(--color-ink)]"
+            >
+              {v.blurb}
+            </motion.span>
+          ) : (
+            <motion.span
+              key="front"
+              initial={{ opacity: 0, rotateX: 70 }}
+              animate={{ opacity: 1, rotateX: 0 }}
+              exit={{ opacity: 0, rotateX: -70 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              style={{ transformPerspective: 600 }}
+              className="type-h3 block leading-snug"
+            >
+              {v.title}
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </button>
       <button
         type="button"
         aria-label={`Move ${v.title}`}
@@ -112,58 +151,67 @@ function ValueRow({ id, isTop }: { id: string; isTop: boolean }) {
 
 /* -------------------------------------------------------------------------- */
 
-/**
- * Written once, when the sort finishes, and never again on its own. Dragging
- * the list afterwards is the family's edit to make, not the machine's — so
- * there is no regenerate button here.
- */
-function TelosBlock() {
+function Reading({ onApplyToTelos }: { onApplyToTelos: () => void }) {
   const { doc, dispatch } = useStore()
-  const [pending, setPending] = useState(!doc.telosSummary)
+  const [pending, setPending] = useState(!doc.valuesReflection)
+
+  /**
+   * Regenerate appears only when the top three have actually changed.
+   *
+   * Not on every reorder: shuffling the order *within* the top three, or
+   * moving anything below it, does not change what the paragraph is about.
+   * Only a value entering or leaving the top three does.
+   */
+  const topThree = doc.valueRanking.slice(0, 3)
+  const [writtenFor, setWrittenFor] = useState<string[]>(topThree)
+  const stale =
+    topThree.length === 3 &&
+    writtenFor.length === 3 &&
+    [...topThree].sort().join('|') !== [...writtenFor].sort().join('|')
+
+  const run = () => {
+    setPending(true)
+    const forTop = doc.valueRanking.slice(0, 3)
+    think(() => composeValuesReflection(doc.valueRanking, doc.origin.familyName), 2000).then(
+      (text) => {
+        dispatch({ type: 'setValuesReflection', text })
+        setWrittenFor(forTop)
+        setPending(false)
+      },
+    )
+  }
 
   useEffect(() => {
-    if (doc.telosSummary || !doc.valueRanking.length) return
-    let live = true
-    think(() => composeTelos(doc.valueRanking, doc.origin.familyName), 2200).then((text) => {
-      if (!live) return
-      dispatch({ type: 'setTelos', telos: text })
-      setPending(false)
-    })
-    return () => {
-      live = false
-    }
+    if (doc.valuesReflection || !doc.valueRanking.length) return
+    run()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  if (!pending && !doc.telosSummary) return null
-
   return (
-    <div className="mt-8">
-      {pending ? (
-        <AssistantReveal
-          pending
-          text=""
-          eyebrow="Your top three, read back"
-          thinkingLabel="Looking at the order you chose"
-        />
-      ) : (
-        <div className="relative pl-4">
-          <span
-            aria-hidden="true"
-            className="absolute top-1 bottom-1 left-0 w-[2px] rounded-full bg-[var(--color-blue-ink)] opacity-30"
-          />
-          <p className="type-eyebrow mb-2" style={{ color: 'var(--color-blue-ink)' }}>
-            Your top three, read back
-          </p>
-          <p className="prose-editorial">
-            <InlineEdit
-              value={doc.telosSummary}
-              onChange={(v) => dispatch({ type: 'setTelos', telos: v })}
-              label="Your telos"
-            />
-          </p>
-        </div>
-      )}
-    </div>
+    <FoodForThought
+      pending={pending}
+      text={doc.valuesReflection}
+      onChange={(v) => dispatch({ type: 'setValuesReflection', text: v })}
+      thinkingLabel="Looking at the order you chose"
+      actions={
+        <>
+          <button
+            type="button"
+            className="btn btn-ghost !py-2 !text-[0.82rem]"
+            onClick={() => {
+              dispatch({ type: 'setTelos', text: doc.valuesReflection })
+              onApplyToTelos()
+            }}
+          >
+            Apply to Telos
+          </button>
+          {stale && (
+            <button type="button" className="btn btn-ghost !py-2 !text-[0.82rem]" onClick={run}>
+              Regenerate
+            </button>
+          )}
+        </>
+      }
+    />
   )
 }

@@ -2,13 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useStore } from '~/app/store'
 import { Popup } from '~/components/Popup'
-import { ArrowRight, Check, Cross, Ticks } from '~/components/Bits'
-import { InlineEdit } from '~/components/InlineEdit'
+import { Check, Cross, Ticks } from '~/components/Bits'
 import { Thinking } from '~/components/Assistant'
 import { RuleWithTick } from '~/illustrations'
 import { DOMAINS } from '~/data/domains'
-import { composeBargain, composeRefusal, think } from '~/lib/assistant'
-import type { Practice, Refusal } from '~/lib/types'
+import { composeBargain, think } from '~/lib/assistant'
+import { BargainRows } from '~/document/BargainRows'
+import type { Practice } from '~/lib/types'
 
 const uid = () => Math.random().toString(36).slice(2, 10)
 
@@ -19,14 +19,28 @@ const fade = {
   transition: { duration: 0.34, ease: [0.16, 1, 0.3, 1] as const },
 }
 
-type Phase = 'brainstorm' | 'input' | 'teaching' | 'composing' | 'decide'
+type Phase = 'brainstorm' | 'input' | 'teaching' | 'composing' | 'decide' | 'primer'
 
 export function PracticesPopup() {
-  const { doc, dispatch, closeActivity } = useStore()
+  const { doc, dispatch, closeActivity, openDocument, nav } = useStore()
   const people = doc.participants
 
+  const primer = nav.activityMode === 'primer'
   const resuming = doc.practices.length > 0
-  const [phase, setPhase] = useState<Phase>(resuming ? 'decide' : 'brainstorm')
+  const [phase, setPhase] = useState<Phase>(
+    primer ? 'primer' : resuming ? 'decide' : 'brainstorm',
+  )
+
+  /**
+   * Leaving the teaching page.
+   *
+   * It was opened from Family Practices and it goes straight back there,
+   * open, with nothing restarted and nothing else on the page unfolded.
+   */
+  const backToPractices = () => {
+    dispatch({ type: 'focusPanel', open: ['practices'] })
+    openDocument('practices')
+  }
   const [who, setWho] = useState(0)
   const [drafts, setDrafts] = useState<Record<string, { thing: string; relief: string }>>({})
 
@@ -52,9 +66,21 @@ export function PracticesPopup() {
       }))
 
     let live = true
-    think(() => built.map((p) => ({ ...p, bargain: composeBargain(p) })), 2600).then((withBargains) => {
+    /* The bargain depends on who is speaking: a child automating homework
+       gives up something different from an adult automating it. */
+    const standingOf = (id: string) => people.find((x) => x.id === id)?.standing
+    think(
+      () => built.map((p) => ({ ...p, bargain: composeBargain(p, standingOf(p.participantId)) })),
+      2600,
+    ).then((withBargains) => {
       if (!live) return
-      dispatch({ type: 'setPractices', practices: withBargains })
+      /* Coming back through the activity is another round, not a redo: the
+         bargains the family already settled stay on the page. */
+      if (doc.practices.length) {
+        withBargains.forEach((practice) => dispatch({ type: 'addPractice', practice }))
+      } else {
+        dispatch({ type: 'setPractices', practices: withBargains })
+      }
       setPhase('decide')
     })
     return () => {
@@ -71,7 +97,10 @@ export function PracticesPopup() {
   useEffect(() => {
     if (phase !== 'decide' || doc.practices.length === 0 || pending.length > 0) return
     dispatch({ type: 'completePractices' })
-    closeActivity()
+    /* Family Practices, open, with nothing else open beside it — and the
+       page lands on it, so the reading starts writing itself in view. */
+    dispatch({ type: 'focusPanel', open: ['practices'] })
+    openDocument('practices')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, pending.length, doc.practices.length])
 
@@ -81,12 +110,13 @@ export function PracticesPopup() {
     teaching: 'input',
     composing: null,
     decide: null,
+    primer: null,
   }
 
   return (
     <Popup
-      title="Family Practices"
-      onClose={closeActivity}
+      title={primer ? 'The Bargain' : 'Family Practices Activity'}
+      onClose={primer ? backToPractices : closeActivity}
       onBack={
         phase === 'input' && who > 0
           ? () => setWho((w) => w - 1)
@@ -105,7 +135,6 @@ export function PracticesPopup() {
         phase === 'brainstorm' ? (
           <button type="button" className="btn btn-primary w-full" onClick={() => setPhase('input')}>
             Continue
-            <ArrowRight />
           </button>
         ) : phase === 'input' ? (
           <button
@@ -118,11 +147,14 @@ export function PracticesPopup() {
             }}
           >
             Next
-            <ArrowRight />
           </button>
         ) : phase === 'teaching' ? (
           <button type="button" className="btn btn-primary w-full" onClick={() => setPhase('composing')}>
             Continue
+          </button>
+        ) : phase === 'primer' ? (
+          <button type="button" className="btn btn-ghost w-full" onClick={backToPractices}>
+            Go back
           </button>
         ) : undefined
       }
@@ -132,43 +164,33 @@ export function PracticesPopup() {
 
         {phase === 'input' && people[who] && (
           <motion.div key={`input-${who}`} {...fade} className="pt-4">
-            <p className="type-eyebrow">
-              {who === 0
-                ? `${people[who].name}'s turn`
-                : `Hand the phone to ${people[who].name}`}
-            </p>
-            <h2 className="type-h2 mt-4">What do you want to automate?</h2>
-            <p className="type-caption mt-2">Your one favorite from the list. Just the thing itself.</p>
-            <input
-              className="field mt-4"
+            <h2 className="type-h2">{people[who].name}, what do you want to automate?</h2>
+            <p className="type-caption mt-2">Type one example from the list.</p>
+            <textarea
+              className="field-area mt-4"
+              rows={2}
               value={draft.thing}
               onChange={(e) => setDraft({ thing: e.target.value })}
-              placeholder="Homework, laundry, the drive to school…"
-              autoComplete="off"
             />
 
             <hr className="hairline my-9" />
 
             <h2 className="type-h2">So you'll no longer have to…</h2>
-            <p className="type-caption mt-2">Finish the sentence. What does it get you out of?</p>
+            <p className="type-caption mt-2">Finish the sentence.</p>
             <textarea
               className="field-area mt-4"
               rows={3}
               value={draft.relief}
               onChange={(e) => setDraft({ relief: e.target.value })}
-              placeholder="…spend an hour every night at the kitchen table"
             />
           </motion.div>
         )}
 
-        {phase === 'teaching' && <BargainPrimer key="teaching" />}
+        {(phase === 'teaching' || phase === 'primer') && <BargainPrimer key="teaching" />}
 
         {phase === 'composing' && (
           <motion.div key="composing" {...fade} className="flex h-full flex-col justify-center">
             <Thinking />
-            <p className="type-caption mx-auto max-w-[26ch] text-center">
-              Every bargain has four parts. You named two of them.
-            </p>
           </motion.div>
         )}
 
@@ -210,14 +232,11 @@ function Brainstorm() {
 
   return (
     <motion.div {...fade} className="pt-4">
-      <h2 className="type-h1">Everything you'd hand over</h2>
+      <h2 className="type-h1">Brainstorm things to automate.</h2>
       <RuleWithTick className="my-5" />
       <p className="prose-editorial">
-        Two minutes. Write down anything and everything your family would automate if it
-        could. The sky is the limit — this is not limited to what is possible today.
-      </p>
-      <p className="prose-editorial mt-4">
-        No hedging. Nothing gets judged yet. Write it all on paper.
+        Take two minutes to brainstorm things your family would like to automate with
+        technology. No need to be realistic. We will consider the trade-offs together.
       </p>
 
       {/* Timer */}
@@ -227,21 +246,7 @@ function Brainstorm() {
         className="surface-raised mt-7 flex w-full items-center gap-4 px-5 py-4"
       >
         <span className="relative h-12 w-12 shrink-0">
-          <svg width="48" height="48" viewBox="0 0 48 48" className="-rotate-90">
-            <circle cx="24" cy="24" r="21" stroke="var(--color-rule)" strokeWidth="2" fill="none" />
-            <circle
-              cx="24"
-              cy="24"
-              r="21"
-              stroke="var(--color-ochre)"
-              strokeWidth="2.5"
-              fill="none"
-              strokeLinecap="round"
-              strokeDasharray={2 * Math.PI * 21}
-              strokeDashoffset={2 * Math.PI * 21 * (1 - progress)}
-              style={{ transition: 'stroke-dashoffset 1s linear' }}
-            />
-          </svg>
+          <Wedge progress={progress} />
         </span>
         <span className="flex-1 text-left">
           <span className="type-h3 block tabular-nums">
@@ -254,7 +259,7 @@ function Brainstorm() {
       </button>
 
       <div className="mt-9">
-        <p className="type-eyebrow mb-3">If you get stuck</p>
+        <p className="type-eyebrow mb-3">Categories to consider</p>
         <div className="flex flex-col gap-3">
           {DOMAINS.map((d) => (
             <div key={d.name} className="surface px-4 py-3">
@@ -265,10 +270,46 @@ function Brainstorm() {
         </div>
       </div>
 
-      <p className="type-caption mt-7 max-w-[32ch]">
-        When time is up, everyone circles one favorite. You can come back to the rest.
+      <p className="type-caption mt-7">
+        When the time is up, each family member circles one favorite. You can access this
+        activity for other items at any time.
       </p>
     </motion.div>
+  )
+}
+
+/**
+ * A clock hand sweeping the face clear.
+ *
+ * Full at the start and gone at zero, so what the family sees is the time
+ * they have left rather than the time they have used.
+ */
+function Wedge({ progress }: { progress: number }) {
+  const r = 21
+  const c = 24
+  /* The remaining time runs from wherever the hand has swept to, clockwise
+     back round to twelve. Drawing it the other way round makes a clock that
+     appears to empty anti-clockwise. */
+  const full = progress >= 0.999
+  const elapsed = (1 - progress) * Math.PI * 2
+  const x = c + r * Math.sin(elapsed)
+  const y = c - r * Math.cos(elapsed)
+  const large = progress > 0.5 ? 1 : 0
+
+  return (
+    <svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true">
+      <circle cx={c} cy={c} r={r} fill="none" stroke="var(--color-rule)" strokeWidth="1.5" />
+      {full ? (
+        <circle cx={c} cy={c} r={r} fill="var(--color-ochre)" />
+      ) : (
+        progress > 0 && (
+          <path
+            d={`M ${c} ${c} L ${x} ${y} A ${r} ${r} 0 ${large} 1 ${c} ${c - r} Z`}
+            fill="var(--color-ochre)"
+          />
+        )
+      )}
+    </svg>
   )
 }
 
@@ -277,46 +318,77 @@ function Brainstorm() {
    ========================================================================== */
 
 function BargainPrimer() {
-  const rows = [
-    { label: 'Now you can', note: 'the new ability — the reason anyone wants it', ours: true },
-    { label: "You'll no longer have to", note: 'the burden it lifts', ours: true },
-    { label: "You're no longer able to", note: 'the ability quietly handed over with it', ours: false },
-    { label: "Now you'll have to", note: 'the new obligation that arrives in its place', ours: false },
-  ]
 
   return (
     <motion.div {...fade} className="pt-4">
-      <h2 className="type-h1">The bargain</h2>
+      <h2 className="type-h1">The Bargain</h2>
       <RuleWithTick className="my-5" />
+
       <p className="prose-editorial">
-        Every tool a family adopts is a trade, and the trade has four parts. Two of them get
-        advertised. Two of them do not.
+        Every automation, every innovation, every technology has trade-offs.
       </p>
 
-      <div className="mt-7 flex flex-col">
-        {rows.map((r) => (
-          <div
-            key={r.label}
-            className="flex gap-3.5 border-b border-[var(--color-rule)] py-3.5 last:border-0"
-          >
-            <span
-              className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full"
-              style={{ background: r.ours ? 'var(--color-ochre)' : 'var(--color-blue-ink)' }}
-            />
-            <span>
-              <span className="type-h3 block">{r.label}…</span>
-              <span className="type-caption">{r.note}</span>
-            </span>
-          </div>
-        ))}
+      <p className="prose-editorial mt-4">
+        At first, technology promises to relieve a problem, a pain, or an inconvenience.
+        Consider the invention of the automobile and the interstate highway:
+      </p>
+
+      <div className="surface mt-5 px-5 py-4">
+        <div className="flex flex-col gap-3">
+          <Example label="Now you can" text="Make a cross-country roadtrip" />
+          <Example
+            label="So you don't have to"
+            text="Plan a journey around daylight, weather, and where you can stop"
+          />
+        </div>
       </div>
 
-      <p className="prose-editorial mt-7">
-        You have already named the first two for yourselves. The assistant's only job is to
-        name the other two — not to talk you out of anything. What you do with them is your
-        family's call.
+      <p className="prose-editorial mt-6">
+        When we introduce technology into our life, there are usually two consequences that
+        follow: 1) you are no longer able to do some of the things you've done before, and
+        2) now you have to do something else. Let's reconsider the invention of the
+        automobile and the highway.
+      </p>
+
+      <div className="surface mt-5 px-5 py-4">
+        <div className="flex flex-col gap-3">
+          <Example label="You're no longer able to" text="Wander and explore on foot" assistant />
+          <Example label="Now you'll have to" text="Purchase and maintain a vehicle" assistant />
+        </div>
+      </div>
+
+      <p className="prose-editorial mt-6">
+        Some technologies have significant trade-offs, while others do not. It's important
+        to consider the impact of our decisions, for ourselves and for others.
+      </p>
+
+      <p className="prose-editorial mt-4">
+        While technology promises to make our lives better, this activity will ask you to
+        decide if the consequences are worth it.
       </p>
     </motion.div>
+  )
+}
+
+function Example({
+  label,
+  text,
+  assistant,
+}: {
+  label: string
+  text: string
+  assistant?: boolean
+}) {
+  return (
+    <div>
+      <span
+        className="type-eyebrow block"
+        style={assistant ? { color: 'var(--color-blue-ink)' } : undefined}
+      >
+        {label}
+      </span>
+      <span className="prose-editorial !text-[0.98rem] block">{text}</span>
+    </div>
   )
 }
 
@@ -325,109 +397,21 @@ function BargainPrimer() {
    ========================================================================== */
 
 function Decide({ practice }: { practice: Practice }) {
-  const { dispatch, participantName, doc } = useStore()
-  const [refusing, setRefusing] = useState(false)
-  const [drafting, setDrafting] = useState(false)
-  const [refusal, setRefusal] = useState<Refusal | null>(null)
+  const { dispatch, doc } = useStore()
 
   const behind = useMemo(
     () => doc.practices.filter((p) => p.decision === 'pending' && p.id !== practice.id).length,
     [doc.practices, practice.id],
   )
 
-  const keep = () => dispatch({ type: 'patchPractice', id: practice.id, patch: { decision: 'kept' } })
-
-  const refuse = () => {
-    setRefusing(true)
-    setDrafting(true)
-    think(() => composeRefusal(practice), 1500).then((r) => {
-      setRefusal(r)
-      setDrafting(false)
-    })
-  }
-
-  const commitRefusal = () =>
-    dispatch({
-      type: 'patchPractice',
-      id: practice.id,
-      patch: { decision: 'refused', refusal },
-    })
-
-  if (refusing) {
-    return (
-      <motion.div {...fade} className="pt-4">
-        <p className="type-eyebrow" style={{ color: 'var(--color-decline)' }}>
-          Turning it down
-        </p>
-        <h2 className="type-h2 mt-3">{practice.thing}</h2>
-
-        {drafting ? (
-          <Thinking label="Putting your refusal into words" />
-        ) : refusal ? (
-          <>
-            <p className="type-caption mt-6 mb-4 max-w-[32ch]">
-              A draft, in your voice. Change any part of it — these have to be your words
-              before you move on.
-            </p>
-            <p className="prose-editorial !text-[1.1rem] !leading-[2]">
-              We will not{' '}
-              <InlineEdit
-                label="what we will not do"
-                value={refusal.willNot}
-                onChange={(v) => setRefusal({ ...refusal, willNot: v })}
-              />
-              , and will still have to{' '}
-              <InlineEdit
-                label="what we will still have to do"
-                value={refusal.willStillHaveTo}
-                onChange={(v) => setRefusal({ ...refusal, willStillHaveTo: v })}
-              />
-              , so we will still be able to{' '}
-              <InlineEdit
-                label="what we will still be able to do"
-                value={refusal.soStillAble}
-                onChange={(v) => setRefusal({ ...refusal, soStillAble: v })}
-              />
-              , and be able to{' '}
-              <InlineEdit
-                label="and what else"
-                value={refusal.andAble}
-                onChange={(v) => setRefusal({ ...refusal, andAble: v })}
-              />
-              .
-            </p>
-
-            <div className="mt-9 flex gap-2.5">
-              <button
-                type="button"
-                className="btn btn-ghost flex-1"
-                onClick={() => {
-                  setRefusing(false)
-                  setRefusal(null)
-                }}
-              >
-                Back
-              </button>
-              <button type="button" className="btn btn-primary flex-1" onClick={commitRefusal}>
-                Save
-              </button>
-            </div>
-          </>
-        ) : null}
-      </motion.div>
-    )
-  }
+  /* Both outcomes write the same shape. Refusing is not a different kind of
+     answer, it is the same bargain read the other way round. */
+  const decide = (decision: 'kept' | 'refused') =>
+    dispatch({ type: 'patchPractice', id: practice.id, patch: { decision } })
 
   return (
     <motion.div {...fade} className="pt-4">
-      <div className="mb-4 flex items-baseline justify-between">
-        <p className="type-eyebrow">{participantName(practice.participantId)} chose</p>
-        {behind > 0 && (
-          <p className="type-caption text-[0.75rem]">
-            {behind} more after this
-          </p>
-        )}
-      </div>
+      <p className="type-eyebrow mb-4">The bargain</p>
 
       {/* The stack: what is still waiting shows behind the card. */}
       <div className="relative">
@@ -442,12 +426,9 @@ function Decide({ practice }: { practice: Practice }) {
           <h2 className="type-h2">{practice.thing}</h2>
           <hr className="hairline my-5" />
 
-          <div className="flex flex-col gap-4">
-            <Row tone="ours" label="Now you can" text="hand it over" />
-            <Row tone="ours" label="You'll no longer have to" text={practice.relief} />
-            <Row tone="theirs" label="You're no longer able to" text={practice.bargain?.noLongerAble ?? ''} />
-            <Row tone="theirs" label="Now you'll have to" text={practice.bargain?.nowHaveTo ?? ''} />
-          </div>
+          {/* Shown as it will be kept. Refusing turns the same four rows
+              around rather than replacing them with a paragraph. */}
+          <BargainRows practice={practice} />
         </div>
       </div>
 
@@ -458,7 +439,7 @@ function Decide({ practice }: { practice: Practice }) {
       <div className="flex gap-3">
         <button
           type="button"
-          onClick={refuse}
+          onClick={() => decide('refused')}
           className="btn flex-1 !py-4"
           style={{
             background: 'var(--color-decline-wash)',
@@ -471,7 +452,7 @@ function Decide({ practice }: { practice: Practice }) {
         </button>
         <button
           type="button"
-          onClick={keep}
+          onClick={() => decide('kept')}
           className="btn flex-1 !py-4"
           style={{
             background: 'var(--color-affirm-wash)',
@@ -484,20 +465,5 @@ function Decide({ practice }: { practice: Practice }) {
         </button>
       </div>
     </motion.div>
-  )
-}
-
-function Row({ label, text, tone }: { label: string; text: string; tone: 'ours' | 'theirs' }) {
-  return (
-    <div className="flex gap-3">
-      <span
-        className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full"
-        style={{ background: tone === 'ours' ? 'var(--color-ochre)' : 'var(--color-blue-ink)' }}
-      />
-      <span className="min-w-0">
-        <span className="type-eyebrow block">{label}</span>
-        <span className="prose-editorial !text-[1.02rem] block">{text}</span>
-      </span>
-    </div>
   )
 }

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useStore } from '~/app/store'
 import { Check, Cross } from '~/components/Bits'
+import { BargainRows } from '~/document/BargainRows'
 import type { Practice } from '~/lib/types'
 
 /**
@@ -16,7 +17,7 @@ import type { Practice } from '~/lib/types'
  * an ordinary button that a keyboard can reach.
  */
 export function PracticeCards({ editable = true }: { editable?: boolean }) {
-  const { doc, dispatch, participantName } = useStore()
+  const { doc, dispatch } = useStore()
   const order = doc.practiceOrder.length ? doc.practiceOrder : doc.practices.map((p) => p.id)
   const cards = order
     .map((id) => doc.practices.find((p) => p.id === id))
@@ -123,9 +124,6 @@ export function PracticeCards({ editable = true }: { editable?: boolean }) {
                   {kept ? <Check size={13} /> : <Cross size={12} />}
                 </span>
                 <span className="type-h3 leading-snug hyphens-auto break-words">{p.thing}</span>
-                <span className="type-caption mt-1.5 text-[0.75rem]">
-                  {participantName(p.participantId)}
-                </span>
               </button>
 
               {editable && (
@@ -194,7 +192,7 @@ const Grip = () => (
 )
 
 function CardDetail({ id, onClose }: { id: string; onClose: () => void }) {
-  const { doc, participantName } = useStore()
+  const { doc, dispatch } = useStore()
   const p = doc.practices.find((x) => x.id === id)
   if (!p) return null
   const kept = p.decision === 'kept'
@@ -210,48 +208,34 @@ function CardDetail({ id, onClose }: { id: string; onClose: () => void }) {
       role="dialog"
       aria-label={p.thing}
     >
-      {/* Grows from card-sized to full. A shared layoutId would be a truer
-          morph, but the small card lives inside a scrolling container and
-          measuring across that boundary lands the panel in the wrong place. */}
+      {/* Opens the way every other full-screen card in the app opens. A
+          rotation here read as a gimmick and told the family nothing. */}
       <motion.div
-        initial={{ scale: 0.82, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
+        initial={{ opacity: 0, scale: 0.97, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.97, y: 8 }}
         onClick={(e) => e.stopPropagation()}
-        transition={{ type: 'spring', stiffness: 420, damping: 36, mass: 0.7 }}
+        transition={{ type: 'spring', stiffness: 520, damping: 40, mass: 0.7 }}
         className="paper-grain surface-raised relative flex h-full w-full flex-col overflow-hidden"
       >
-        <motion.div
-          initial={{ rotateY: -75, opacity: 0 }}
-          animate={{ rotateY: 0, opacity: 1 }}
-          transition={{ delay: 0.14, duration: 0.34, ease: [0.16, 1, 0.3, 1] }}
-          style={{ transformPerspective: 900 }}
-          className="scroll-quiet relative z-1 min-h-0 flex-1 overflow-y-auto px-6 pt-6 pb-4"
-        >
-          <p
-            className="type-eyebrow"
-            style={{ color: kept ? 'var(--color-affirm)' : 'var(--color-decline)' }}
+        <div className="scroll-quiet relative z-1 min-h-0 flex-1 overflow-y-auto px-6 pt-6 pb-4">
+          <span
+            className="mb-3 flex h-7 w-7 items-center justify-center rounded-full"
+            style={{
+              background: kept ? 'var(--color-affirm-wash)' : 'var(--color-decline-wash)',
+              color: kept ? 'var(--color-affirm)' : 'var(--color-decline)',
+            }}
           >
-            {kept ? 'Accepted' : 'Refused'} · {participantName(p.participantId)}
-          </p>
-          <h3 className="type-h1 mt-2">{p.thing}</h3>
+            {kept ? <Check size={15} /> : <Cross size={14} />}
+          </span>
+          <h3 className="type-h1">{p.thing}</h3>
           <hr className="hairline my-6" />
 
-          {kept ? (
-            <div className="flex flex-col gap-5">
-              <Line label="Now you can" text="hand it over" />
-              <Line label="You'll no longer have to" text={p.relief} />
-              <Line label="You're no longer able to" text={p.bargain?.noLongerAble ?? ''} dim />
-              <Line label="Now you'll have to" text={p.bargain?.nowHaveTo ?? ''} dim />
-            </div>
-          ) : (
-            <p className="prose-editorial">
-              We will not {p.refusal?.willNot}, and will still have to{' '}
-              {p.refusal?.willStillHaveTo}, so we will still be able to {p.refusal?.soStillAble},
-              and be able to {p.refusal?.andAble}.
-            </p>
-          )}
-        </motion.div>
+          <BargainRows
+            practice={p}
+            onEdit={(patch) => dispatch({ type: 'patchPractice', id: p.id, patch })}
+          />
+        </div>
 
         <div className="relative z-1 shrink-0 border-t border-[var(--color-rule)] px-6 py-3.5">
           <button type="button" onClick={onClose} className="btn btn-ghost w-full">
@@ -260,16 +244,5 @@ function CardDetail({ id, onClose }: { id: string; onClose: () => void }) {
         </div>
       </motion.div>
     </motion.div>
-  )
-}
-
-function Line({ label, text, dim }: { label: string; text: string; dim?: boolean }) {
-  return (
-    <div>
-      <p className="type-eyebrow" style={dim ? { color: 'var(--color-blue-ink)' } : undefined}>
-        {label}
-      </p>
-      <p className="prose-editorial !text-[1rem]">{text}</p>
-    </div>
   )
 }

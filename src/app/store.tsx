@@ -11,12 +11,15 @@ import {
 import {
   emptyDocument,
   type FamilyDocument,
+  type PanelId,
   type Participant,
   type Practice,
   type SectionId,
 } from '~/lib/types'
 
-const STORAGE_KEY = 'family-foundation.draft.v1'
+/* Bumped whenever the document shape changes underneath it — a draft in the
+   old shape would otherwise half-load into the new one. */
+const STORAGE_KEY = 'family-foundation.draft.v3'
 
 /* ==========================================================================
    Actions
@@ -24,21 +27,29 @@ const STORAGE_KEY = 'family-foundation.draft.v1'
 
 type Action =
   | { type: 'setParticipants'; participants: Participant[]; familyName: string }
+  | { type: 'setPhoto'; photo: string | null }
   | { type: 'patchOrigin'; patch: Partial<FamilyDocument['origin']> }
   | { type: 'setOriginStep'; step: number }
   | { type: 'completeOrigin' }
   | { type: 'setPractices'; practices: Practice[] }
+  | { type: 'addPractice'; practice: Practice }
   | { type: 'patchPractice'; id: string; patch: Partial<Practice> }
   | { type: 'setPracticeOrder'; order: string[] }
   | { type: 'completePractices' }
-  | { type: 'setPraxis'; reflection?: string; statement?: string }
-  | { type: 'patchPraxisParts'; patch: Partial<FamilyDocument['praxisParts']> }
-  | { type: 'completePraxis' }
+  | { type: 'setPracticesReflection'; text: string }
+  | { type: 'setValuesReflection'; text: string }
+  | { type: 'setPraxis'; text: string }
+  | { type: 'setTelos'; text: string }
   | { type: 'setRanking'; ranking: string[] }
-  | { type: 'setTelos'; telos: string }
-  | { type: 'completeConstitution' }
+  | { type: 'completeValues' }
+  | { type: 'setPrompt'; id: string; text: string }
+  | { type: 'setSignature'; id: string; name: string }
+  | { type: 'setCreatedOn'; date: string }
+  | { type: 'togglePanel'; panel: PanelId }
+  | { type: 'openPanel'; panel: PanelId }
+  | { type: 'focusPanel'; open: PanelId[] }
+  | { type: 'collapseAllExcept'; keep: PanelId[] }
   | { type: 'reset' }
-  | { type: 'hydrate'; doc: FamilyDocument }
 
 function reducer(state: FamilyDocument, action: Action): FamilyDocument {
   switch (action.type) {
@@ -49,17 +60,29 @@ function reducer(state: FamilyDocument, action: Action): FamilyDocument {
         origin: { ...state.origin, familyName: action.familyName },
         completed: { ...state.completed, setup: action.participants.length > 0 },
       }
+    case 'setPhoto':
+      return { ...state, photo: action.photo }
     case 'patchOrigin':
       return { ...state, origin: { ...state.origin, ...action.patch } }
     case 'setOriginStep':
       return { ...state, originStep: action.step }
     case 'completeOrigin':
       return { ...state, completed: { ...state.completed, origin: true } }
+    /* The reading is about the cards. New cards make the old reading wrong,
+       so it is cleared and written again rather than left standing. */
     case 'setPractices':
       return {
         ...state,
         practices: action.practices,
         practiceOrder: action.practices.map((p) => p.id),
+        practicesReflection: '',
+      }
+    case 'addPractice':
+      return {
+        ...state,
+        practices: [...state.practices, action.practice],
+        practiceOrder: [...state.practiceOrder, action.practice.id],
+        practicesReflection: '',
       }
     case 'patchPractice':
       return {
@@ -72,26 +95,47 @@ function reducer(state: FamilyDocument, action: Action): FamilyDocument {
       return { ...state, practiceOrder: action.order }
     case 'completePractices':
       return { ...state, completed: { ...state.completed, practices: true } }
+    case 'setPracticesReflection':
+      return { ...state, practicesReflection: action.text }
+    case 'setValuesReflection':
+      return { ...state, valuesReflection: action.text }
     case 'setPraxis':
-      return {
-        ...state,
-        praxisReflection: action.reflection ?? state.praxisReflection,
-        praxisStatement: action.statement ?? state.praxisStatement,
-      }
-    case 'patchPraxisParts':
-      return { ...state, praxisParts: { ...state.praxisParts, ...action.patch } }
-    case 'completePraxis':
-      return { ...state, completed: { ...state.completed, praxis: true } }
+      return { ...state, praxisStatement: action.text }
+    case 'setTelos':
+      return { ...state, telosStatement: action.text }
     case 'setRanking':
       return { ...state, valueRanking: action.ranking }
-    case 'setTelos':
-      return { ...state, telosSummary: action.telos }
-    case 'completeConstitution':
-      return { ...state, completed: { ...state.completed, constitution: true } }
+    case 'completeValues':
+      return { ...state, completed: { ...state.completed, values: true } }
+    case 'setPrompt':
+      return { ...state, prompts: { ...state.prompts, [action.id]: action.text } }
+    case 'setSignature':
+      return { ...state, signatures: { ...state.signatures, [action.id]: action.name } }
+    case 'setCreatedOn':
+      return { ...state, createdOn: action.date }
+    case 'togglePanel':
+      return {
+        ...state,
+        expanded: state.expanded.includes(action.panel)
+          ? state.expanded.filter((p) => p !== action.panel)
+          : [...state.expanded, action.panel],
+      }
+    /* Navigation between sections collapses everything and opens exactly
+       what was asked for — a sub-section and the parent it lives inside, or
+       a whole section on its own. Manual chevrons are untouched by this. */
+    case 'focusPanel':
+      return { ...state, expanded: [...new Set(action.open)] }
+    case 'collapseAllExcept':
+      return { ...state, expanded: state.expanded.filter((p) => action.keep.includes(p)) }
+    case 'openPanel':
+      return {
+        ...state,
+        expanded: state.expanded.includes(action.panel)
+          ? state.expanded
+          : [...state.expanded, action.panel],
+      }
     case 'reset':
       return emptyDocument()
-    case 'hydrate':
-      return action.doc
     default:
       return state
   }
@@ -102,24 +146,30 @@ function reducer(state: FamilyDocument, action: Action): FamilyDocument {
    --------------------------------------------------------------------------
    Two stages, and they are deliberately not the same surface. The cover is
    a place you leave; the document is a place you are inside of. Going back
-   to the cover is not scrolling to the top of the document — the PRD is
-   emphatic about that separation and the whole app is built around it.
+   to the cover is not scrolling to the top of the document.
    ========================================================================== */
 
-export type Stage = 'cover' | 'setup' | 'document'
+export type Stage = 'cover' | 'setup' | 'document' | 'prompts'
 
-/**
- * Only two activities take over the screen. Origin and Praxis are written
- * directly into the document, because the point of them is that the family
- * watches their own page fill in.
- */
-export type ActivityId = 'practices' | 'values' | null
+/** Each session's activity takes the screen as its own card. */
+export type ActivityId = 'origin' | 'practices' | 'values' | null
+
+/** 'primer' opens the teaching page on its own, with nothing to complete. */
+export type ActivityMode = 'run' | 'primer'
 
 type Nav = {
   stage: Stage
   /** Where the document should land when it opens. Consumed once. */
   jumpTo: SectionId | null
   activity: ActivityId
+  /**
+   * How the activity opens.
+   *
+   * "Learn more" is a request to read the teaching again, not to redo the
+   * activity, so it opens a single page and closes back to where it came
+   * from without touching the family's answers.
+   */
+  activityMode: ActivityMode
 }
 
 /* ==========================================================================
@@ -132,11 +182,13 @@ type Store = {
   nav: Nav
   goCover: () => void
   goSetup: () => void
+  goPrompts: () => void
   openDocument: (section?: SectionId) => void
   clearJump: () => void
-  openActivity: (id: Exclude<ActivityId, null>) => void
+  openActivity: (id: Exclude<ActivityId, null>, mode?: ActivityMode) => void
   closeActivity: () => void
   unlocked: (section: SectionId) => boolean
+  isOpen: (panel: PanelId) => boolean
   participantName: (id: string) => string
 }
 
@@ -147,7 +199,8 @@ function load(): FamilyDocument {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return emptyDocument()
     const parsed = JSON.parse(raw)
-    return { ...emptyDocument(), ...parsed, completed: { ...emptyDocument().completed, ...parsed.completed } }
+    const base = emptyDocument()
+    return { ...base, ...parsed, completed: { ...base.completed, ...parsed.completed } }
   } catch {
     return emptyDocument()
   }
@@ -155,7 +208,13 @@ function load(): FamilyDocument {
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [doc, dispatch] = useReducer(reducer, undefined, load)
-  const [nav, setNav] = useState<Nav>({ stage: 'cover', jumpTo: null, activity: null })
+  const [nav, setNav] = useState<Nav>({
+    stage: 'cover',
+    jumpTo: null,
+    activity: null,
+    activityMode: 'run',
+  })
+
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(doc))
@@ -168,20 +227,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     () => setNav((n) => ({ ...n, stage: 'cover', activity: null, jumpTo: null })),
     [],
   )
-  const goSetup = useCallback(
-    () => setNav((n) => ({ ...n, stage: 'setup', activity: null })),
-    [],
-  )
+  const goSetup = useCallback(() => setNav((n) => ({ ...n, stage: 'setup', activity: null })), [])
+  const goPrompts = useCallback(() => setNav((n) => ({ ...n, stage: 'prompts', activity: null })), [])
   const openDocument = useCallback(
     (section?: SectionId) =>
       setNav((n) => ({ ...n, stage: 'document', jumpTo: section ?? null, activity: null })),
     [],
   )
   const clearJump = useCallback(() => setNav((n) => ({ ...n, jumpTo: null })), [])
-  const openActivity = useCallback(
-    (id: Exclude<ActivityId, null>) => setNav((n) => ({ ...n, activity: id })),
-    [],
-  )
+  const openActivity = useCallback((id: Exclude<ActivityId, null>, mode: ActivityMode = 'run') => {
+    /* Everything else folds away while an activity runs, so closing it
+       returns the family to one open section rather than the whole page.
+       Reading the teaching again is not running the activity, so the page
+       underneath is left exactly as it was. */
+    if (mode === 'run') dispatch({ type: 'collapseAllExcept', keep: [] })
+    setNav((n) => ({ ...n, activity: id, activityMode: mode }))
+  }, [])
   const closeActivity = useCallback(() => setNav((n) => ({ ...n, activity: null })), [])
 
   const unlocked = useCallback(
@@ -191,16 +252,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           return doc.completed.setup
         case 'practices':
           return doc.completed.origin
-        case 'constitution':
+        case 'values':
           return doc.completed.practices
-        case 'covenant':
-          return doc.completed.constitution
+        /* The signatures epilogue is never shown greyed. It is not a locked
+           section the family scrolls past — it simply appears once earned. */
+        case 'signatures':
+          return doc.completed.values
         default:
           return false
       }
     },
     [doc.completed],
   )
+
+  const isOpen = useCallback((panel: PanelId) => doc.expanded.includes(panel), [doc.expanded])
 
   const participantName = useCallback(
     (id: string) => doc.participants.find((p) => p.id === id)?.name ?? 'Someone',
@@ -214,14 +279,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       nav,
       goCover,
       goSetup,
+      goPrompts,
       openDocument,
       clearJump,
       openActivity,
       closeActivity,
       unlocked,
+      isOpen,
       participantName,
     }),
-    [doc, nav, goCover, goSetup, openDocument, clearJump, openActivity, closeActivity, unlocked, participantName],
+    [
+      doc,
+      nav,
+      goCover,
+      goSetup,
+      goPrompts,
+      openDocument,
+      clearJump,
+      openActivity,
+      closeActivity,
+      unlocked,
+      isOpen,
+      participantName,
+    ],
   )
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>

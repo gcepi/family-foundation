@@ -5,60 +5,59 @@ import type { ValueCard } from '~/lib/types'
  *
  * The academic label for each value is deliberately absent — a family
  * sorting these should be weighing the thing itself, not a vocabulary word.
- * Blurbs are one short phrase, not a list of synonyms: these are compared
- * two at a time on a narrow screen, and a family reading them aloud needs
- * something they can finish in one breath.
+ * Every description is a complete sentence beginning "We value…", short
+ * enough to take in at a glance while two cards are being compared.
  */
 export const VALUES: ValueCard[] = [
   {
-    id: 'own-minds',
-    title: 'Thinking for ourselves',
-    blurb: 'Making up our own minds.',
-  },
-  {
-    id: 'new-things',
-    title: 'Trying new things',
-    blurb: 'Adventure, and the nerve to take it on.',
-  },
-  {
     id: 'enjoying-life',
     title: 'Enjoying life',
-    blurb: 'Delight in an ordinary day.',
+    blurb: 'We value moments that bring us happiness.',
   },
   {
     id: 'getting-good',
-    title: 'Getting good at things',
-    blurb: 'Skill worth putting our name on.',
+    title: 'Being good at things',
+    blurb: 'We value success through demonstrated competence.',
+  },
+  {
+    id: 'safe-and-steady',
+    title: 'Feeling safe',
+    blurb: 'We value the security of our information and privacy.',
+  },
+  {
+    id: 'own-minds',
+    title: 'Thinking for ourselves',
+    blurb: 'We value critical thinking and decision making that is not influenced by others.',
+  },
+  {
+    id: 'our-people',
+    title: 'Taking care of people we know',
+    blurb: 'We value the welfare of our friends, family, and close-knit community.',
   },
   {
     id: 'a-say',
     title: 'Having a say in what happens to us',
-    blurb: 'A hand on the wheel of our own life.',
+    blurb: 'We value our control over our circumstances and environments.',
   },
   {
-    id: 'safe-and-steady',
-    title: 'Feeling safe and steady',
-    blurb: 'A home that holds when things shake.',
-  },
-  {
-    id: 'not-letting-down',
-    title: 'Not letting people down',
-    blurb: 'Keeping our word.',
+    id: 'new-things',
+    title: 'Trying new things',
+    blurb: 'We value new and exciting experiences.',
   },
   {
     id: 'what-we-were-handed',
-    title: 'Keeping what we were handed',
-    blurb: 'The customs passed down to us.',
+    title: 'The way things have been done',
+    blurb: 'We value the lessons we have learned from the past.',
   },
   {
-    id: 'our-people',
-    title: 'Taking care of our people',
-    blurb: 'Showing up for the ones closest to us.',
+    id: 'not-letting-down',
+    title: 'Not letting others down',
+    blurb: "We value others' expectations and not feeling like a burden.",
   },
   {
     id: 'everyone',
-    title: 'Looking out for everyone, not just us',
-    blurb: 'Care that reaches past our own door.',
+    title: 'Caring for the world',
+    blurb: 'We value the welfare of all people and nature.',
   },
 ]
 

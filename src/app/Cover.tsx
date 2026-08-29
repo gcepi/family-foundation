@@ -1,9 +1,9 @@
-import { motion } from 'framer-motion'
+import { useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useStore } from '~/app/store'
 import { Screen } from '~/app/Shell'
-import { Astrolabe } from '~/illustrations'
-import { SECTION_MARKS } from '~/illustrations/marks'
-import { ArrowRight, Check, Lock } from '~/components/Bits'
+import { FamilyPhoto } from '~/components/FamilyPhoto'
+import { ArrowRight, Box, Check, Lock } from '~/components/Bits'
 import { downloadMarkdown } from '~/lib/export'
 import type { SectionId } from '~/lib/types'
 
@@ -11,114 +11,87 @@ type Row = {
   id: SectionId
   title: string
   blurb: string
-  parts?: { label: string; done: boolean }[]
 }
 
 export function Cover() {
-  const { doc, openDocument, goSetup, unlocked } = useStore()
+  const { doc, dispatch, openDocument, goSetup, goPrompts, unlocked } = useStore()
+  const [confirming, setConfirming] = useState(false)
   const c = doc.completed
 
   const rows: Row[] = [
     {
       id: 'portrait',
       title: 'Family Portrait',
-      blurb: 'Where you began, how you practice, what you are aiming at.',
-      parts: [
-        { label: 'Origin', done: c.origin },
-        { label: 'Praxis', done: c.praxis },
-        { label: 'Telos', done: c.constitution },
-      ],
+      blurb: 'A picture of who our family is, who we are becoming, and how we will get there.',
     },
     {
       id: 'practices',
       title: 'Family Practices',
-      blurb: 'What your family will hand over, and what it will keep.',
+      blurb: 'Considering technology in light of its consequences for ourselves and others.',
     },
     {
-      id: 'constitution',
-      title: 'Family Constitution',
-      blurb: 'The values you would protect when they cost something.',
-    },
-    {
-      id: 'covenant',
-      title: 'The Finished Document',
-      blurb: 'Everything you wrote, in one piece, to take home.',
+      id: 'values',
+      title: 'Family Values',
+      blurb: 'Ordering the things we value point toward the life we are looking for.',
     },
   ]
 
   const status = (id: SectionId): 'locked' | 'open' | 'started' | 'done' => {
     if (!unlocked(id)) return 'locked'
-    if (id === 'portrait') return c.constitution ? 'done' : c.origin ? 'started' : 'open'
+    if (id === 'portrait') {
+      const whole = c.origin && !!doc.praxisStatement.trim() && !!doc.telosStatement.trim()
+      return whole ? 'done' : c.origin ? 'started' : 'open'
+    }
     if (id === 'practices') return c.practices ? 'done' : doc.practices.length ? 'started' : 'open'
-    if (id === 'constitution') return c.constitution ? 'done' : doc.valueRanking.length ? 'started' : 'open'
-    return c.constitution ? 'open' : 'locked'
+    if (id === 'values') return c.values ? 'done' : doc.valueRanking.length ? 'started' : 'open'
+    return 'open'
   }
 
   const setupDone = c.setup
+  const family = doc.origin.familyName.trim()
 
   return (
     <Screen>
-      <div className="relative z-1 flex min-h-full flex-col px-7 pt-[max(2rem,env(safe-area-inset-top))] pb-10">
+      <div className="relative z-1 flex flex-col px-7 pt-[max(2rem,env(safe-area-inset-top))] pb-10">
         {/* Masthead */}
         <div className="mb-1 flex items-center justify-between">
-          <p className="type-eyebrow">Family Foundation</p>
+          <p className="type-eyebrow">
+            {family ? `${family} Family Foundation` : 'Family Foundation'}
+          </p>
           {setupDone && (
             <button
               type="button"
               onClick={goSetup}
               className="type-caption underline decoration-[var(--color-rule-strong)] underline-offset-4 transition-colors hover:text-[var(--color-ink)]"
             >
-              Who's here
+              Participants
             </button>
           )}
         </div>
 
-        <div className="my-5 flex justify-center">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.94, rotate: -6 }}
-            animate={{ opacity: 1, scale: 1, rotate: 0 }}
-            transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <Astrolabe
-              size={212}
-              progress={{
-                portrait: c.origin,
-                practices: c.practices,
-                constitution: c.constitution,
-              }}
-            />
-          </motion.div>
+        <div className="my-5">
+          <FamilyPhoto />
         </div>
 
         <h1 className="type-h1 text-center">
-          {doc.origin.familyName.trim() ? `The ${doc.origin.familyName.trim()} Family` : 'Your Family'}
+          {family ? `${family} Family Foundation` : 'Your Family Foundation'}
         </h1>
-        <p className="type-caption mx-auto mt-3 max-w-[34ch] text-balance text-center">
-          Three sessions, one document, and nothing in it is finished until you say so.
-        </p>
 
         {/* Setup gate */}
         {!setupDone ? (
-          <button
-            type="button"
-            onClick={goSetup}
-            className="btn btn-primary mt-8 w-full"
-          >
-            Begin — who is here today?
-            <ArrowRight />
+          <button type="button" onClick={goSetup} className="btn btn-primary mt-8 w-full">
+            Begin
           </button>
         ) : (
           <>
-            <div className="mt-9 mb-3 flex items-center gap-3">
+            <div className="mt-9 mb-3">
               <span className="type-eyebrow">Contents</span>
-              <span className="h-px flex-1 bg-[var(--color-rule)]" />
             </div>
 
             <ul className="flex flex-col">
               {rows.map((row, i) => {
                 const s = status(row.id)
                 const locked = s === 'locked'
-                const Mark = SECTION_MARKS[row.id]
                 return (
                   <motion.li
                     key={row.id}
@@ -142,48 +115,29 @@ export function Cover() {
                       className="group flex w-full items-start gap-4 border-b border-[var(--color-rule)] py-4 text-left transition-opacity disabled:cursor-not-allowed"
                       style={{ opacity: locked ? 0.42 : 1 }}
                     >
-                      <span className="mt-0.5 shrink-0">
-                        <Mark size={24} />
+                      {/* The slot the section mark used to occupy. The state
+                          badge lives here now, so the row's left edge tells
+                          you where the family is rather than which icon it is. */}
+                      <span className="mt-1 flex w-5 shrink-0 justify-center">
+                        {locked ? (
+                          <span className="text-[var(--color-muted)]">
+                            <Lock size={14} />
+                          </span>
+                        ) : s === 'done' ? (
+                          <span className="text-[var(--color-affirm)]">
+                            <Check size={16} />
+                          </span>
+                        ) : (
+                          <span className="text-[var(--color-muted)]">
+                            <Box size={14} />
+                          </span>
+                        )}
                       </span>
 
                       <span className="min-w-0 flex-1">
-                        <span className="flex items-center gap-2">
-                          <span className="type-h3">{row.title}</span>
-                          {s === 'done' && (
-                            <span className="text-[var(--color-ochre)]">
-                              <Check size={14} />
-                            </span>
-                          )}
-                          {locked && (
-                            <span className="text-[var(--color-muted)]">
-                              <Lock />
-                            </span>
-                          )}
-                        </span>
-                        <span className="type-caption mt-1 block">{row.blurb}</span>
-
-                        {row.parts && (
-                          <span className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
-                            {row.parts.map((p, pi) => (
-                              <span key={p.label} className="flex items-center gap-2">
-                                {pi > 0 && (
-                                  <span className="text-[var(--color-rule-strong)]" aria-hidden="true">
-                                    ·
-                                  </span>
-                                )}
-                                <span
-                                  className="text-[0.78rem]"
-                                  style={{
-                                    color: p.done ? 'var(--color-ink)' : 'var(--color-muted)',
-                                    opacity: p.done ? 1 : 0.55,
-                                    fontWeight: p.done ? 540 : 400,
-                                  }}
-                                >
-                                  {p.label}
-                                </span>
-                              </span>
-                            ))}
-                          </span>
+                        <span className="type-h3">{row.title}</span>
+                        {row.blurb && (
+                          <span className="type-caption mt-1 block">{row.blurb}</span>
                         )}
                       </span>
 
@@ -197,31 +151,11 @@ export function Cover() {
                 )
               })}
             </ul>
-
-            {/* Who's in the room */}
-            {doc.participants.length > 0 && (
-              <div className="mt-7">
-                <p className="type-eyebrow mb-2.5">In the room</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {doc.participants.map((p) => (
-                    <span
-                      key={p.id}
-                      className="rounded-full border border-[var(--color-rule-strong)] px-3 py-1 text-[0.8rem]"
-                      style={{
-                        background: p.standing === 'grownup' ? 'transparent' : 'var(--color-blue-wash)',
-                      }}
-                    >
-                      {p.name}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
           </>
         )}
 
-        {doc.completed.constitution && (
-          <div className="mt-auto pt-8">
+        {c.values && (
+          <div className="pt-8">
             <button
               type="button"
               onClick={() => downloadMarkdown(doc)}
@@ -242,11 +176,102 @@ export function Cover() {
                   strokeLinecap="round"
                 />
               </svg>
-              Download
+              Download Markdown
+            </button>
+          </div>
+        )}
+
+        {setupDone && (
+          <div className="pt-7 pb-1 text-center">
+            <button
+              type="button"
+              onClick={goPrompts}
+              className="type-caption underline decoration-[var(--color-rule-strong)] underline-offset-4 transition-colors hover:text-[var(--color-ink)]"
+            >
+              AI prompts
+            </button>
+            <span className="type-caption mx-2 text-[var(--color-rule-strong)]">·</span>
+            <button
+              type="button"
+              onClick={() => setConfirming(true)}
+              className="type-caption underline decoration-[var(--color-rule-strong)] underline-offset-4 transition-colors hover:text-[var(--color-decline)]"
+            >
+              Start over
             </button>
           </div>
         )}
       </div>
+
+      <AnimatePresence>
+        {confirming && (
+          <StartOverWarning
+            onCancel={() => setConfirming(false)}
+            onConfirm={() => {
+              setConfirming(false)
+              dispatch({ type: 'reset' })
+              goSetup()
+            }}
+          />
+        )}
+      </AnimatePresence>
     </Screen>
+  )
+}
+
+/**
+ * Asks in the page rather than in the browser.
+ *
+ * window.confirm is suppressed inside the artifact viewer's sandboxed frame,
+ * which is why the button appeared to do nothing there: the dialog never
+ * opened, so the answer was always no.
+ */
+function StartOverWarning({
+  onCancel,
+  onConfirm,
+}: {
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.16 }}
+      onClick={onCancel}
+      role="dialog"
+      aria-label="Start over"
+      className="absolute inset-0 z-50 flex items-center justify-center bg-[rgba(37,35,33,0.32)] p-6 md:rounded-[34px]"
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 8 }}
+        transition={{ type: 'spring', stiffness: 520, damping: 40, mass: 0.7 }}
+        onClick={(e) => e.stopPropagation()}
+        className="surface-raised w-full max-w-[20rem] px-6 py-6"
+      >
+        <p className="type-h3">Are you sure?</p>
+        <p className="type-caption mt-2">All progress will be lost.</p>
+
+        <div className="mt-6 flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="btn w-full"
+            style={{
+              background: 'var(--color-decline-wash)',
+              color: 'var(--color-decline)',
+              borderColor: 'color-mix(in srgb, var(--color-decline) 34%, transparent)',
+            }}
+          >
+            Start over
+          </button>
+          <button type="button" onClick={onCancel} className="btn btn-ghost w-full">
+            Cancel
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
   )
 }

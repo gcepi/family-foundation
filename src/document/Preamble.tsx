@@ -24,8 +24,11 @@ function Slot({
   label: string
   editable: boolean
 }) {
-  if (editable && value.trim()) {
-    return <InlineEdit value={value} onChange={onChange} label={label} />
+  /* Editable stays editable even when empty. Falling back to a static blank
+     the moment someone cleared the text left the field unclickable, with no
+     way back into it — and these fields feed the rest of the document. */
+  if (editable) {
+    return <InlineEdit value={value} onChange={onChange} label={label} placeholder="…" />
   }
   return <Blank value={value} width={width} />
 }
@@ -61,21 +64,23 @@ export function Preamble({ editable = false }: { editable?: boolean }) {
         onChange={set('familyName')}
         label="Family name"
       />{' '}
-      family began in{' '}
-      <Slot
-        editable={editable}
-        value={o.startedWhere}
-        width="9ch"
-        onChange={set('startedWhere')}
-        label="Where the family started"
-      />{' '}
-      when{' '}
+      {/* Both halves supply their own preposition, so the sentence takes
+          "when Mom and Dad met at Timberview" as readily as "in the summer
+          of 1994 in Cleveland". */}
+      family began{' '}
       <Slot
         editable={editable}
         value={o.startedWhen}
         width="11ch"
         onChange={set('startedWhen')}
         label="When the family started"
+      />{' '}
+      <Slot
+        editable={editable}
+        value={o.startedWhere}
+        width="9ch"
+        onChange={set('startedWhere')}
+        label="Where the family started"
       />
       . Together, they started a family because{' '}
       <Slot
@@ -89,7 +94,7 @@ export function Preamble({ editable = false }: { editable?: boolean }) {
       {names.length ? (
         names.map((n, i) => (
           <span key={i}>
-            {i > 0 && ', '}
+            {i > 0 && (i === names.length - 1 ? (names.length > 2 ? ', and ' : ' and ') : ', ')}
             <Slot
               editable={editable}
               value={n}
@@ -101,7 +106,7 @@ export function Preamble({ editable = false }: { editable?: boolean }) {
         ))
       ) : (
         <>
-          <Blank width="6ch" />, <Blank width="6ch" />, <Blank width="6ch" />
+          <Blank width="6ch" />, <Blank width="6ch" />, and <Blank width="6ch" />
         </>
       )}{' '}
       live in{' '}

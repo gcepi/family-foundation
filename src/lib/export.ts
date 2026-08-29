@@ -1,13 +1,22 @@
 import type { FamilyDocument } from '~/lib/types'
 import { valueById } from '~/data/values'
-import { decap, toOurVoice } from '~/lib/assistant'
+import { decap } from '~/lib/assistant'
 
 /**
- * The constitution as Markdown.
+ * The foundation as Markdown.
  *
  * Built from the same fields the page renders, so what downloads is what the
  * family read — not a summary of it.
  */
+/** "A", "A and B", "A, B, and C". */
+const nameSentence = (names: string[]): string => {
+  const n = names.filter(Boolean)
+  if (n.length === 0) return ''
+  if (n.length === 1) return n[0]
+  if (n.length === 2) return `${n[0]} and ${n[1]}`
+  return `${n.slice(0, -1).join(', ')}, and ${n[n.length - 1]}`
+}
+
 export function toMarkdown(doc: FamilyDocument): string {
   const o = doc.origin
   const family = o.familyName.trim() || '____'
@@ -16,13 +25,13 @@ export function toMarkdown(doc: FamilyDocument): string {
   const top = doc.valueRanking.slice(0, 3).map((id) => valueById(id)?.title).filter(Boolean)
 
   const out: string[] = []
-  out.push(`# The Constitution of the ${family} Family`, '')
+  out.push(`# The ${family} Family Foundation`, '')
 
   out.push('## Preamble', '')
   out.push(
-    `The ${family} family began in ${o.startedWhere || '____'} when ${o.startedWhen || '____'}. ` +
+    `The ${family} family began ${o.startedWhen || '____'} ${o.startedWhere || '____'}. ` +
       `Together, they started a family because ${o.startedWhy || '____'}. ` +
-      `Today, ${o.memberNames.join(', ') || '____'} live in ${o.livesIn || '____'}.`,
+      `Today, ${nameSentence(o.memberNames) || '____'} live in ${o.livesIn || '____'}.`,
     '',
   )
 
@@ -30,10 +39,10 @@ export function toMarkdown(doc: FamilyDocument): string {
     out.push('## What we will hand over', '')
     for (const p of kept) {
       out.push(
-        `- We will hand over **${decap(p.thing)}**, so we will no longer have to ` +
-          `${decap(p.relief).replace(/\.$/, '')} — knowing we will no longer ` +
-          `${toOurVoice(p.bargain?.noLongerAble ?? '')}, and will now have to ` +
-          `${toOurVoice(p.bargain?.nowHaveTo ?? '')}.`,
+        `- We will automate **${decap(p.thing)}**, so we will no longer have to ` +
+          `${decap(p.relief).replace(/\.$/, '')} — knowing we will no longer be able to ` +
+          `${p.bargain?.noLongerAble ?? ''}, and will now have to ` +
+          `${p.bargain?.nowHaveTo ?? ''}.`,
       )
     }
     out.push('')
@@ -43,8 +52,9 @@ export function toMarkdown(doc: FamilyDocument): string {
     out.push('## What we will not hand over', '')
     for (const p of refused) {
       out.push(
-        `- We will not ${p.refusal?.willNot}, and will still have to ${p.refusal?.willStillHaveTo}, ` +
-          `so we will still be able to ${p.refusal?.soStillAble}, and be able to ${p.refusal?.andAble}.`,
+        `- We will not automate **${decap(p.thing)}**, so we will still have to ` +
+          `${decap(p.relief).replace(/\.$/, '')} — we will still be able to ` +
+          `${p.bargain?.noLongerAble ?? ''}, and we still can ${p.bargain?.alsoKeeps ?? ''}.`,
       )
     }
     out.push('')
@@ -52,8 +62,8 @@ export function toMarkdown(doc: FamilyDocument): string {
 
   if (doc.praxisStatement) out.push('## Our praxis', '', doc.praxisStatement, '')
 
-  if (doc.telosSummary) {
-    out.push('## Our telos', '', doc.telosSummary, '')
+  if (doc.telosStatement) {
+    out.push('## Our telos', '', doc.telosStatement, '')
     if (top.length === 3) out.push(`In order: ${top.join(' · ')}`, '')
   }
 
@@ -66,11 +76,24 @@ export function toMarkdown(doc: FamilyDocument): string {
     out.push('')
   }
 
-  out.push('## Agreed to by', '')
-  for (const p of doc.participants) out.push(`- ${p.name}`)
+  const signed = doc.participants
+    .map((p) => (doc.signatures[p.id] ?? '').trim())
+    .filter(Boolean)
+  const [y, m, d] = doc.createdOn.split('-').map(Number)
+  const created =
+    y && m && d
+      ? new Date(y, m - 1, d).toLocaleDateString(undefined, {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        })
+      : '____'
+
+  out.push('## Created by', '')
+  for (const p of doc.participants) out.push(`- ${(doc.signatures[p.id] ?? '').trim() || p.name}`)
   out.push(
     '',
-    new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }),
+    `The ${family} Family Foundation was created by ${nameSentence(signed) || '____'} on ${created}.`,
   )
 
   return out.join('\n')
@@ -89,7 +112,7 @@ type ClaudeHost = { use?: (name: string) => Promise<DownloadsNamespace | null> }
 
 export async function downloadMarkdown(doc: FamilyDocument) {
   const name = doc.origin.familyName.trim().toLowerCase().replace(/\s+/g, '-') || 'family'
-  const filename = `${name}-constitution.md`
+  const filename = `${name}-family-foundation.md`
   const data = toMarkdown(doc)
 
   const host = (window as unknown as { claude?: ClaudeHost }).claude

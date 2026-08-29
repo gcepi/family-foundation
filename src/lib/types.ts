@@ -22,30 +22,34 @@ export type Origin = {
 
 export type Decision = 'pending' | 'kept' | 'refused'
 
-/** The two halves the family writes, and the two the assistant returns. */
+/**
+ * The three clauses the assistant supplies. The family writes the first two
+ * halves of the bargain themselves (the thing, and the burden it lifts);
+ * these are the parts nobody advertises.
+ *
+ * One shape serves both outcomes. Accepting and refusing are the same
+ * bargain read in opposite directions, so they get the same four rows and
+ * the same formatting — only the labels change.
+ */
 export type Bargain = {
+  /** "We will no longer be able to …" — kept. */
   noLongerAble: string
+  /** "Now we will have to …" — kept. */
   nowHaveTo: string
-}
-
-/** Written when a family turns a bargain down. */
-export type Refusal = {
-  willNot: string
-  willStillHaveTo: string
-  soStillAble: string
-  andAble: string
+  /** "So we still can …" — refused. */
+  alsoKeeps: string
 }
 
 export type Practice = {
   id: string
+  /** Empty when the family added it by hand rather than in the round. */
   participantId: string
-  /** The thing they want to automate. Becomes the card title. */
+  /** The thing to automate. Becomes the card title. */
   thing: string
-  /** "So you'll no longer have to…" */
+  /** "So I'll no longer have to…" */
   relief: string
   bargain: Bargain | null
   decision: Decision
-  refusal: Refusal | null
 }
 
 export type ValueCard = {
@@ -54,48 +58,66 @@ export type ValueCard = {
   blurb: string
 }
 
-export type SectionId = 'portrait' | 'practices' | 'constitution' | 'covenant'
+export type SectionId = 'portrait' | 'practices' | 'values' | 'signatures'
+
+/** Sections and subsections that open and close. */
+export type PanelId = 'portrait' | 'practices' | 'values' | 'origin' | 'praxis' | 'telos'
 
 export type FamilyDocument = {
   participants: Participant[]
+  /** A photo the family takes on the spot, as a data URI. */
+  photo: string | null
   origin: Origin
   practices: Practice[]
   /** Order of the practice cards after the family rearranges them. */
   practiceOrder: string[]
   /**
    * How far into the Origin questions the family has got. Kept here rather
-   * than in the component so leaving for the contents page and coming back
-   * lands them where they were.
+   * than in the component so leaving the activity and coming back lands
+   * them where they were.
    */
   originStep: number
-  /** What the assistant noticed across the kept and refused bargains. */
-  praxisReflection: string
   /**
-   * The praxis, asked as four short questions rather than one paragraph with
-   * blanks in it — a blank in a textarea is a worse prompt than a question.
+   * Consider this under Family Practices — what the assistant noticed
+   * across the kept and refused bargains. Editable by the family.
    */
-  praxisParts: {
-    handOver: string
-    soThat: string
-    notHandOver: string
-    because: string
-  }
-  /** The four parts assembled, and editable once assembled. */
+  practicesReflection: string
+  /**
+   * Consider this under Family Values — the ranking read back. Editable,
+   * and regenerated on request after the family reorders the list.
+   */
+  valuesReflection: string
+  /**
+   * Praxis and Telos are free paragraphs. Each is seeded once from the
+   * Consider this above it and is independently editable after that —
+   * a paste-in, not a live mirror.
+   */
   praxisStatement: string
+  telosStatement: string
   /** Value ids, most important first. */
   valueRanking: string[]
-  telosSummary: string
+  /**
+   * Prompt text the family (or facilitator) has edited in the app, keyed by
+   * prompt id. Absent keys fall back to the defaults in `lib/prompts.ts`.
+   */
+  prompts: Record<string, string>
+  /** What each participant typed on their signature line, keyed by id. */
+  signatures: Record<string, string>
+  /** The date the family put on the finished foundation, as yyyy-mm-dd. */
+  createdOn: string
+  /** Panels the family has opened. Everything starts closed. */
+  expanded: PanelId[]
   completed: {
     setup: boolean
     origin: boolean
     practices: boolean
-    praxis: boolean
-    constitution: boolean
+    values: boolean
   }
 }
 
 export const emptyDocument = (): FamilyDocument => ({
   participants: [],
+  photo: null,
   origin: {
     familyName: '',
     memberNames: [],
@@ -107,16 +129,19 @@ export const emptyDocument = (): FamilyDocument => ({
   practices: [],
   practiceOrder: [],
   originStep: 0,
-  praxisReflection: '',
-  praxisParts: { handOver: '', soThat: '', notHandOver: '', because: '' },
+  practicesReflection: '',
+  valuesReflection: '',
   praxisStatement: '',
+  telosStatement: '',
   valueRanking: [],
-  telosSummary: '',
+  prompts: {},
+  signatures: {},
+  createdOn: new Date().toISOString().slice(0, 10),
+  expanded: [],
   completed: {
     setup: false,
     origin: false,
     practices: false,
-    praxis: false,
-    constitution: false,
+    values: false,
   },
 })

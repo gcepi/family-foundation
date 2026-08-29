@@ -4,7 +4,9 @@ import { StubProvider } from '~/components/Stub'
 import { Shell } from '~/app/Shell'
 import { Cover } from '~/app/Cover'
 import { Setup } from '~/app/Setup'
+import { Prompts } from '~/app/Prompts'
 import { Document } from '~/document/Document'
+import { OriginPopup } from '~/activities/OriginPopup'
 import { PracticesPopup } from '~/activities/PracticesPopup'
 import { ValuesPopup } from '~/activities/ValuesPopup'
 
@@ -48,6 +50,19 @@ function Stages() {
           </motion.div>
         )}
 
+        {nav.stage === 'prompts' && (
+          <motion.div
+            key="prompts"
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 24 }}
+            transition={{ duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
+            className="absolute inset-0 flex flex-col"
+          >
+            <Prompts />
+          </motion.div>
+        )}
+
         {nav.stage === 'document' && (
           <motion.div
             key="document"
@@ -64,6 +79,7 @@ function Stages() {
       </div>
 
       <AnimatePresence>
+        {nav.activity === 'origin' && <OriginPopup key="a-origin" />}
         {nav.activity === 'practices' && <PracticesPopup key="a-practices" />}
         {nav.activity === 'values' && <ValuesPopup key="a-values" />}
       </AnimatePresence>

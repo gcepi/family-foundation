@@ -180,13 +180,14 @@ body {
    Fields — a written-on line, not a UI input box
    -------------------------------------------------------------------------- */
 
+/* A box, like every other field in the app. A ruled line reads as
+   decoration on a phone and is easy to miss as something you can tap. */
 .field {
   width: 100%;
-  background: transparent;
-  border: 0;
-  border-bottom: 1.5px solid var(--color-rule-strong);
-  border-radius: 0;
-  padding: 0.55rem 0.15rem;
+  background: var(--color-paper);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-field);
+  padding: 0.7rem 0.85rem;
   font-family: var(--font-display);
   font-variation-settings: 'SOFT' 30, 'WONK' 0, 'opsz' 20;
   font-size: 1.15rem;
@@ -205,8 +206,8 @@ body {
 }
 
 .field:focus {
-  border-bottom-color: var(--color-ochre);
-  background: linear-gradient(to bottom, transparent 62%, var(--color-ochre-wash));
+  border-color: var(--color-ochre);
+  box-shadow: 0 0 0 3px var(--color-ochre-wash);
 }
 
 .field-area {
@@ -364,7 +365,6 @@ body {
 
 .inline-edit {
   display: inline;
-  min-width: 3ch;
   padding: 0 0.06em;
   border-bottom: 1.5px solid var(--color-ochre);
   background: var(--color-ochre-wash);
@@ -375,6 +375,13 @@ body {
 
 .inline-edit:focus {
   background: color-mix(in srgb, var(--color-ochre) 30%, transparent);
+}
+
+/* Only an emptied field needs a reserved width — enough to stay a tap
+   target. A filled one sits inline and takes exactly its own words. */
+.inline-edit:empty {
+  display: inline-block;
+  min-width: 5ch;
 }
 
 .inline-edit:empty::before {

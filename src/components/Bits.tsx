@@ -63,15 +63,14 @@ export function Handoff({ to, asking }: { to: string; asking: string }) {
       transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
       className="surface-raised mx-1 px-6 py-7 text-center"
     >
-      <svg width="40" height="40" viewBox="0 0 44 44" fill="none" className="mx-auto mb-4" aria-hidden="true">
-        <rect x="14" y="4" width="16" height="27" rx="3.5" stroke="var(--color-blue-ink)" strokeWidth="1.2" />
-        <line x1="19" y1="8.5" x2="25" y2="8.5" stroke="var(--color-blue-ink)" strokeWidth="1.2" />
-        <path d="M8 38 Q22 30 36 38" stroke="var(--color-ochre)" strokeWidth="1.4" fill="none" strokeLinecap="round" />
-        <path d="M32 34.5 L36 38 L31.5 40" stroke="var(--color-ochre)" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <svg width="34" height="40" viewBox="0 0 34 40" fill="none" className="mx-auto mb-4" aria-hidden="true">
+        <rect x="6" y="3" width="22" height="34" rx="4" stroke="var(--color-blue-ink)" strokeWidth="1.3" />
+        <line x1="13" y1="8" x2="21" y2="8" stroke="var(--color-blue-ink)" strokeWidth="1.3" strokeLinecap="round" />
+        <circle cx="17" cy="32" r="1.6" fill="var(--color-blue-ink)" />
       </svg>
       <p className="type-eyebrow mb-2">Hand the phone to</p>
       <p className="type-h2 mb-3">{to}</p>
-      <p className="type-caption mx-auto max-w-[26ch]">{asking}</p>
+      <p className="type-caption mx-auto">{asking}</p>
     </motion.div>
   )
 }
@@ -144,4 +143,62 @@ export const Lock = ({ size = 14 }: { size?: number }) => (
     <rect x="3" y="7" width="10" height="7" rx="1.6" stroke="currentColor" strokeWidth="1.3" />
     <path d="M5.5 7 V5 a2.5 2.5 0 0 1 5 0 V7" stroke="currentColor" strokeWidth="1.3" />
   </svg>
+)
+
+/** Step back one decision. */
+export const Undo = ({ size = 17 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 18 18" fill="none" aria-hidden="true">
+    <path
+      d="M6.5 3.5 L3 7 L6.5 10.5"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M3 7 H10 A4 4 0 0 1 10 15 H7.5"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
+/** Not started, but available. The empty box beside a contents row. */
+export const Box = ({ size = 14 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 18 18" fill="none" aria-hidden="true">
+    <rect x="3" y="3" width="12" height="12" rx="3" stroke="currentColor" strokeWidth="1.3" />
+  </svg>
+)
+
+/**
+ * The tick, drawn rather than dropped in.
+ *
+ * Finishing something should be worth watching. The delay lets the page
+ * settle where it is going first, so the mark forms in front of the family
+ * instead of being there already when they arrive.
+ */
+export const Tick = ({ size = 16, delay = 0 }: { size?: number; delay?: number }) => (
+  <motion.svg
+    width={size}
+    height={size}
+    viewBox="0 0 18 18"
+    fill="none"
+    aria-hidden="true"
+    initial={{ opacity: 0, scale: 0.5 }}
+    animate={{ opacity: 1, scale: 1 }}
+    transition={{ delay, type: 'spring', stiffness: 520, damping: 24 }}
+  >
+    <motion.path
+      d="M3.5 9.5 L7 13 L14.5 5"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      initial={{ pathLength: 0 }}
+      animate={{ pathLength: 1 }}
+      transition={{ delay: delay + 0.06, duration: 0.34, ease: [0.16, 1, 0.3, 1] }}
+    />
+  </motion.svg>
 )

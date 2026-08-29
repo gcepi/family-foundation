@@ -2,18 +2,17 @@ import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useStore } from '~/app/store'
 import { Screen } from '~/app/Shell'
-import { ArrowLeft, ArrowRight, Close, IconButton } from '~/components/Bits'
+import { ArrowLeft, Close, IconButton } from '~/components/Bits'
 import type { Participant, Standing } from '~/lib/types'
 
 const uid = () => Math.random().toString(36).slice(2, 10)
 
 /**
- * Who is holding the phone.
+ * The participant list.
  *
  * Deliberately not "who is in your family" — that question belongs to the
- * first activity, and asking it twice would give the family two answers to
- * reconcile. This is only the people in the room today, plus the name the
- * document will be filed under.
+ * Origin activity, and asking it twice would give the family two answers to
+ * reconcile. These are the names the activities will address by name.
  */
 export function Setup() {
   const { doc, dispatch, goCover, openDocument } = useStore()
@@ -53,7 +52,6 @@ export function Setup() {
       footer={
         <button type="button" className="btn btn-primary w-full" disabled={!ready} onClick={save}>
           {doc.completed.setup ? 'Save' : 'Open the document'}
-          <ArrowRight />
         </button>
       }
     >
@@ -64,29 +62,26 @@ export function Setup() {
           </IconButton>
         </div>
 
-        <h1 className="type-h1">Who is here?</h1>
-        <p className="type-caption mt-3 max-w-[32ch]">
-          Just the people in the room today. The phone will move between them, so it needs
-          to know their names.
+        <h1 className="type-h1">List all participants</h1>
+        <p className="type-caption mt-3">
+          These names will be referenced in upcoming activities.
         </p>
 
         <div className="mt-9">
           <label className="type-eyebrow mb-1 block" htmlFor="family-name">
-            The family name
+            Last name
           </label>
           <input
             id="family-name"
             className="field"
             value={familyName}
             onChange={(e) => setFamilyName(e.target.value)}
-            placeholder="Whatever you call yourselves"
             autoComplete="off"
           />
         </div>
 
-        <div className="mt-10 flex items-center gap-3">
-          <span className="type-eyebrow">The people</span>
-          <span className="h-px flex-1 bg-[var(--color-rule)]" />
+        <div className="mt-10">
+          <span className="type-eyebrow">Participants</span>
         </div>
 
         <ul className="mt-1">

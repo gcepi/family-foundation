@@ -69,9 +69,9 @@ export function Popup({
           </IconButton>
         </header>
 
-        <div className="scroll-quiet relative z-1 min-h-0 flex-1 overflow-y-auto px-5 py-4">
-          {children}
-        </div>
+        {/* The scrollbar is left visible on purpose. A card with more below
+            the fold and no bar looks like a card that is not responding. */}
+        <div className="relative z-1 min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
 
         {footer && (
           <div className="relative z-1 shrink-0 border-t border-[var(--color-rule)] px-5 py-3.5">
