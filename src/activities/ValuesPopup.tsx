@@ -7,10 +7,6 @@ import { VALUES } from '~/data/values'
 import type { ValueCard } from '~/lib/types'
 
 const N = VALUES.length
-const PODIUM = 3
-
-/** Far enough that nobody does it by accident while nudging the order. */
-const RECALL_DISTANCE = 80
 
 const shuffle = <T,>(arr: T[]): T[] => {
   const a = [...arr]
@@ -25,7 +21,7 @@ const shuffle = <T,>(arr: T[]): T[] => {
 type Snapshot = {
   play: (ValueCard | null)[]
   queue: ValueCard[]
-  podium: ValueCard[]
+  ranked: ValueCard[]
   settled: boolean
 }
 
@@ -34,13 +30,13 @@ type Snapshot = {
  *
  * Above the rule: one question and two values, and nothing else — a family
  * is not rating values one at a time, they are deciding which of two gives
- * way. Below it: the top three those decisions are building.
+ * way. Below it: the ranking those decisions are building.
  *
- * The value you choose stays in play and faces the next one, so the last
- * card standing has beaten everything and takes the first slot. The two it
- * beat most recently hold second and third, and they change as the family
- * goes — the podium is the running answer, not a scoreboard that only
- * appears at the end.
+ * The value you choose stays in play and faces the next one. The other goes
+ * straight to the top of the ranking and pushes everything already there
+ * down a place, which is the right position for it: it just lost to the card
+ * that has beaten everything ranked below. The last value standing drops in
+ * above them all at the end.
  */
 export function ValuesPopup() {
   const { doc, dispatch, closeActivity, openDocument } = useStore()
@@ -49,7 +45,7 @@ export function ValuesPopup() {
   const [deck] = useState(() => shuffle(VALUES))
   const [play, setPlay] = useState<(ValueCard | null)[]>(() => deck.slice(0, 2))
   const [queue, setQueue] = useState<ValueCard[]>(() => deck.slice(2))
-  const [podium, setPodium] = useState<ValueCard[]>([])
+  const [ranked, setRanked] = useState<ValueCard[]>([])
   const [settled, setSettled] = useState(false)
   const [past, setPast] = useState<Snapshot[]>([])
 
@@ -69,20 +65,20 @@ export function ValuesPopup() {
   const family = doc.origin.familyName.trim()
   const decided = Math.min(N - 1, N - queue.length - play.filter(Boolean).length)
 
-  const remember = () => setPast((p) => [...p, { play, queue, podium, settled }])
+  const remember = () => setPast((p) => [...p, { play, queue, ranked, settled }])
 
   const undo = () => {
     const last = past[past.length - 1]
     if (!last) return
     setPlay(last.play)
     setQueue(last.queue)
-    setPodium(last.podium)
+    setRanked(last.ranked)
     setSettled(last.settled)
     setPast(past.slice(0, -1))
     navigator.vibrate?.(4)
   }
 
-  /** The tapped value stays where it is; the other one drops onto the podium. */
+  /** The tapped value stays where it is; the other one goes to the top of the list. */
   const choose = (seat: number) => {
     const other = seat === 0 ? 1 : 0
     const winner = play[seat]
@@ -93,15 +89,13 @@ export function ValuesPopup() {
     const nextPlay = [...play]
 
     if (queue.length) {
-      /* Slot one is held open for whoever is still standing at the end, so
-         the runners-up fill from the second slot down. */
-      setPodium([loser, ...podium].slice(0, PODIUM - 1))
+      setRanked([loser, ...ranked])
       nextPlay[other] = queue[0]
       setQueue(queue.slice(1))
     } else {
       /* Nothing left to face it. The winner has beaten everything, so it
-         takes the first slot and the sort is over. */
-      setPodium([winner, loser, ...podium].slice(0, PODIUM))
+         goes in above the value it just beat and the sort is over. */
+      setRanked([winner, loser, ...ranked])
       setSettled(true)
       nextPlay[other] = null
       nextPlay[seat] = null
@@ -111,34 +105,14 @@ export function ValuesPopup() {
     navigator.vibrate?.(6)
   }
 
-  /**
-   * Second thoughts. A value on the podium can be dragged back up to be
-   * argued about again; whichever value it displaces returns to the queue
-   * rather than being ranked by default.
-   */
-  const recall = (card: ValueCard) => {
-    if (settled || !claim()) return
-    const seat = play[1] ? 1 : 0
-    const displaced = play[seat]
-    remember()
-    setPodium(podium.filter((c) => c.id !== card.id))
-    setPlay(play.map((c, i) => (i === seat ? card : c)))
-    if (displaced) setQueue([displaced, ...queue])
-    navigator.vibrate?.(4)
-  }
-
-  /** Dragging inside the podium rewrites the order it was built in. */
+  /** Dragging inside the list rewrites the order it was built in. */
   const reorder = (next: ValueCard[]) => {
     remember()
-    setPodium(next)
+    setRanked(next)
   }
 
   const finish = () => {
-    /* The three the family argued over lead; the rest follow in the order
-       they were dealt, so the document still holds all ten. */
-    const chosen = podium.map((c) => c.id)
-    const rest = deck.map((v) => v.id).filter((id) => !chosen.includes(id))
-    dispatch({ type: 'setRanking', ranking: [...chosen, ...rest] })
+    dispatch({ type: 'setRanking', ranking: ranked.map((c) => c.id) })
     dispatch({ type: 'completeValues' })
     /* Family Values, open, with nothing else open beside it. */
     dispatch({ type: 'focusPanel', open: ['values'] })
@@ -174,7 +148,7 @@ export function ValuesPopup() {
 
           <p className="prose-editorial">
             Read each value and decide which matters more. Tap or swipe up to choose. The
-            three left standing at the end are your top three.
+            one you set aside takes its place in the ranking below.
           </p>
 
           <button
@@ -209,10 +183,10 @@ export function ValuesPopup() {
         {framing}
 
         {/* Two values, and no third one in the corner of the eye. Once the
-            podium is settled there is nothing left to weigh. */}
+            list is settled there is nothing left to weigh. */}
         {settled ? (
           <p className="type-caption text-center">
-            Your top three. Drag to change the order, then continue.
+            Every value has a place. Drag to change the order, then continue.
           </p>
         ) : (
           <div className="grid grid-cols-2 items-stretch gap-3">
@@ -228,12 +202,7 @@ export function ValuesPopup() {
           </div>
         )}
 
-        <Podium
-          cards={podium}
-          settled={settled}
-          onReorder={reorder}
-          onRecall={settled ? undefined : recall}
-        />
+        <Ranking cards={ranked} onReorder={reorder} />
       </div>
     </Popup>
   )
@@ -270,28 +239,22 @@ function ValueTile({ card, onChoose }: { card: ValueCard; onChoose: () => void }
 /* -------------------------------------------------------------------------- */
 
 /**
- * The top three, as numbered slots.
+ * The ranking, as numbered slots.
  *
- * Empty slots are visible from the first decision, so the family can see the
- * shape of what they are filling in. The first is held back until the sort
- * is over — the value that ends up there is the one still standing.
+ * Every slot is on screen from the first decision, so the family can see the
+ * whole shape of what they are filling in. Values arrive at the top and push
+ * the rest down; the empty slots wait underneath.
  */
-function Podium({
+function Ranking({
   cards,
-  settled,
   onReorder,
-  onRecall,
 }: {
   cards: ValueCard[]
-  settled: boolean
   onReorder: (next: ValueCard[]) => void
-  onRecall?: (card: ValueCard) => void
 }) {
   const [explaining, setExplaining] = useState(false)
   const [flipped, setFlipped] = useState<string[]>([])
-  /* Until the sort is settled, slot one is reserved and the runners-up sit
-     under it; afterwards the three cards simply are slots one to three. */
-  const offset = settled ? 0 : PODIUM - cards.length
+  const empty = N - cards.length
 
   return (
     <div className="relative border-t border-[var(--color-rule)] pt-3">
@@ -306,7 +269,7 @@ function Podium({
         >
           i
         </button>
-        <p className="type-eyebrow">Top three</p>
+        <p className="type-eyebrow">Ranking</p>
       </div>
 
       <AnimatePresence>
@@ -320,23 +283,15 @@ function Podium({
             className="surface-raised absolute bottom-full left-0 z-10 mb-2 px-4 py-3"
           >
             <p className="type-caption text-[var(--color-ink)]">
-              The goal of this activity is to arrive at your top three values, and they
-              change as you decide. Tap a card to read what it means, drag the handle to
-              move it, or drag it upward to put it back into consideration.
+              Each value you set aside takes the highest open place, above everything it
+              outranks. Your top three will inform your Telos statement. Tap a card to read
+              what it means, or drag the handle to move it.
             </p>
           </motion.div>
         )}
       </AnimatePresence>
 
       <div className="flex flex-col gap-1.5">
-        {Array.from({ length: offset }, (_, i) => (
-          <EmptySlot
-            key={`empty-${i}`}
-            n={i + 1}
-            hint={i === 0 ? 'For the last value standing' : undefined}
-          />
-        ))}
-
         <Reorder.Group
           axis="y"
           values={cards}
@@ -344,73 +299,73 @@ function Podium({
           className="flex list-none flex-col gap-1.5"
         >
           {cards.map((card, i) => (
-            <PodiumRow
+            <RankRow
               key={card.id}
               card={card}
-              n={offset + i + 1}
+              n={i + 1}
               flipped={flipped.includes(card.id)}
               onFlip={() =>
                 setFlipped((f) =>
                   f.includes(card.id) ? f.filter((x) => x !== card.id) : [...f, card.id],
                 )
               }
-              onRecall={onRecall}
             />
           ))}
         </Reorder.Group>
+
+        {Array.from({ length: empty }, (_, i) => (
+          <EmptySlot key={`empty-${i}`} n={cards.length + i + 1} />
+        ))}
       </div>
     </div>
   )
 }
 
-function EmptySlot({ n, hint }: { n: number; hint?: string }) {
+function EmptySlot({ n }: { n: number }) {
   return (
     <div
       aria-hidden="true"
-      className="flex min-h-[5.75rem] items-center gap-3 px-4 py-3"
+      className="flex min-h-[4.5rem] items-center gap-3 px-4 py-3"
       style={{
         border: '1px dashed var(--color-rule-strong)',
         borderRadius: 'var(--radius-card)',
-        opacity: 0.55,
+        opacity: 0.45,
       }}
     >
       <span className="w-4 shrink-0 text-center text-[0.75rem] tabular-nums text-[var(--color-muted)]">
         {n}
       </span>
-      <span className="type-caption flex-1 !text-[0.8rem] italic opacity-70">{hint}</span>
+      <span className="flex-1" />
     </div>
   )
 }
 
-function PodiumRow({
+function RankRow({
   card,
   n,
   flipped,
   onFlip,
-  onRecall,
 }: {
   card: ValueCard
   n: number
   flipped: boolean
   onFlip: () => void
-  onRecall?: (card: ValueCard) => void
 }) {
   const controls = useDragControls()
+  /* The top three are the ones the Telos statement will read. */
+  const isTop = n <= 3
 
   return (
     <Reorder.Item
       value={card}
       dragListener={false}
       dragControls={controls}
-      /* Dragged far enough up to have left the podium is a request to put
-         the value back in play; anything shorter is a reorder. */
-      onDragEnd={(_, info) => {
-        if (onRecall && info.offset.y < -RECALL_DISTANCE) onRecall(card)
-      }}
-      className="flex min-h-[5.75rem] items-center gap-3 px-4 py-3"
+      className="flex min-h-[4.5rem] items-center gap-3 px-4 py-3"
       style={{
-        background: 'var(--color-ochre-wash)',
-        border: '1px solid color-mix(in srgb, var(--color-ochre) 40%, transparent)',
+        background: isTop ? 'var(--color-ochre-wash)' : 'var(--color-paper-dark)',
+        border: `1px solid ${
+          isTop ? 'color-mix(in srgb, var(--color-ochre) 40%, transparent)' : 'var(--color-rule)'
+        }`,
         borderRadius: 'var(--radius-card)',
       }}
     >

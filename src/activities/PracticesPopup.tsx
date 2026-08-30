@@ -25,6 +25,11 @@ export function PracticesPopup() {
   const { doc, dispatch, closeActivity, openDocument, nav } = useStore()
   const people = doc.participants
 
+  /* A refusal is a conclusion, not a dismissal. The family sees what they
+     just decided, written out, before the next card arrives. */
+  const [refusedId, setRefusedId] = useState<string | null>(null)
+  const refused = doc.practices.find((p) => p.id === refusedId) ?? null
+
   const primer = nav.activityMode === 'primer'
   const resuming = doc.practices.length > 0
   const [phase, setPhase] = useState<Phase>(
@@ -96,13 +101,15 @@ export function PracticesPopup() {
      them over and get out of the way. */
   useEffect(() => {
     if (phase !== 'decide' || doc.practices.length === 0 || pending.length > 0) return
+    /* The last card was refused and is still being read. */
+    if (refusedId) return
     dispatch({ type: 'completePractices' })
     /* Family Practices, open, with nothing else open beside it — and the
        page lands on it, so the reading starts writing itself in view. */
     dispatch({ type: 'focusPanel', open: ['practices'] })
     openDocument('practices')
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, pending.length, doc.practices.length])
+  }, [phase, pending.length, doc.practices.length, refusedId])
 
   const backTo: Record<Phase, Phase | null> = {
     brainstorm: null,
@@ -132,7 +139,31 @@ export function PracticesPopup() {
         ) : undefined
       }
       footer={
-        phase === 'brainstorm' ? (
+        refused ? (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="btn btn-ghost flex-1"
+              onClick={() => {
+                dispatch({
+                  type: 'patchPractice',
+                  id: refused.id,
+                  patch: { decision: 'pending' },
+                })
+                setRefusedId(null)
+              }}
+            >
+              Go back
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary flex-1"
+              onClick={() => setRefusedId(null)}
+            >
+              Next
+            </button>
+          </div>
+        ) : phase === 'brainstorm' ? (
           <button type="button" className="btn btn-primary w-full" onClick={() => setPhase('input')}>
             Continue
           </button>
@@ -194,7 +225,11 @@ export function PracticesPopup() {
           </motion.div>
         )}
 
-        {phase === 'decide' && pending[0] && <Decide key={pending[0].id} practice={pending[0]} />}
+        {refused && <Refused key={`refused-${refused.id}`} practice={refused} />}
+
+        {!refused && phase === 'decide' && pending[0] && (
+          <Decide key={pending[0].id} practice={pending[0]} onRefuse={setRefusedId} />
+        )}
       </AnimatePresence>
     </Popup>
   )
@@ -396,7 +431,13 @@ function Example({
    Decide — one at a time, the way you clear unread messages
    ========================================================================== */
 
-function Decide({ practice }: { practice: Practice }) {
+function Decide({
+  practice,
+  onRefuse,
+}: {
+  practice: Practice
+  onRefuse: (id: string) => void
+}) {
   const { dispatch, doc } = useStore()
 
   const behind = useMemo(
@@ -406,8 +447,10 @@ function Decide({ practice }: { practice: Practice }) {
 
   /* Both outcomes write the same shape. Refusing is not a different kind of
      answer, it is the same bargain read the other way round. */
-  const decide = (decision: 'kept' | 'refused') =>
+  const decide = (decision: 'kept' | 'refused') => {
     dispatch({ type: 'patchPractice', id: practice.id, patch: { decision } })
+    if (decision === 'refused') onRefuse(practice.id)
+  }
 
   return (
     <motion.div {...fade} className="pt-4">
@@ -464,6 +507,48 @@ function Decide({ practice }: { practice: Practice }) {
           Accept
         </button>
       </div>
+    </motion.div>
+  )
+}
+
+/* ==========================================================================
+   Refused — the same card the document will hold, before moving on
+   ========================================================================== */
+
+/**
+ * What refusing actually said.
+ *
+ * The four rows turn around when a bargain is declined, and that reversal is
+ * the whole lesson: what you will still have to do, what you can still do.
+ * Showing it here, full page, means the family reads their own decision
+ * rather than discovering it later on a card they happen to tap.
+ */
+function Refused({ practice }: { practice: Practice }) {
+  const { dispatch } = useStore()
+
+  return (
+    <motion.div {...fade} className="pt-4">
+      <p className="type-eyebrow mb-4">The bargain</p>
+
+      <div className="flex items-start gap-3">
+        <span
+          className="mt-[7px] flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+          style={{
+            background: 'var(--color-decline-wash)',
+            color: 'var(--color-decline)',
+          }}
+        >
+          <Cross size={14} />
+        </span>
+        <h2 className="type-h1">{practice.thing}</h2>
+      </div>
+
+      <hr className="hairline my-6" />
+
+      <BargainRows
+        practice={practice}
+        onEdit={(patch) => dispatch({ type: 'patchPractice', id: practice.id, patch })}
+      />
     </motion.div>
   )
 }

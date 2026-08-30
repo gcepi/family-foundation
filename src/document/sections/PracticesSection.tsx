@@ -82,12 +82,20 @@ function AddPractice() {
         >
           Quick add
         </button>
+        {/* Reading is not adding. It carries the assistant's blue, the same
+            colour the teaching text uses, so the two buttons are not asking
+            the family to read the labels to tell them apart. */}
         <button
           type="button"
           onClick={() => openActivity('practices', 'primer')}
-          className="btn btn-ghost flex-1 !py-2.5 !text-[0.85rem]"
+          className="btn flex-1 !py-2.5 !text-[0.85rem]"
+          style={{
+            color: 'var(--color-blue-ink)',
+            borderColor: 'color-mix(in srgb, var(--color-blue-ink) 38%, transparent)',
+            background: 'color-mix(in srgb, var(--color-blue-ink) 7%, transparent)',
+          }}
         >
-          Learn more
+          Read more
         </button>
       </div>
     )
@@ -152,10 +160,15 @@ function Reading({ onApplyToPraxis }: { onApplyToPraxis: () => void }) {
    */
   const signature = doc.practices.map((p) => `${p.id}:${p.decision}`).join('|')
   const wroteFor = useRef<string | null>(doc.practicesReflection ? signature : null)
+  /* Marked while a reading is being written and released if that attempt is
+     torn down, so a remount starts a fresh one instead of waiting forever on
+     a promise nobody is listening to any more. */
+  const inFlight = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!doc.practices.length || wroteFor.current === signature) return
-    wroteFor.current = signature
+    if (!doc.practices.length) return
+    if (wroteFor.current === signature || inFlight.current === signature) return
+    inFlight.current = signature
     setPending(true)
     let live = true
     think(
@@ -163,11 +176,14 @@ function Reading({ onApplyToPraxis }: { onApplyToPraxis: () => void }) {
       2000,
     ).then((text) => {
       if (!live) return
+      wroteFor.current = signature
+      inFlight.current = null
       dispatch({ type: 'setPracticesReflection', text })
       setPending(false)
     })
     return () => {
       live = false
+      if (inFlight.current === signature) inFlight.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signature])

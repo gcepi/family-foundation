@@ -112,16 +112,18 @@ export function PracticeCards({ editable = true }: { editable?: boolean }) {
               <button
                 type="button"
                 onClick={() => setOpen(p.id)}
-                className="flex w-full flex-col items-start p-3.5 pr-8 text-left"
+                className="flex w-full items-start gap-2.5 p-3.5 pr-8 text-left"
               >
+                {/* Beside the words. In the top corner it read as a close
+                    button on a card that has nothing to close. */}
                 <span
-                  className="mb-2.5 flex h-6 w-6 items-center justify-center rounded-full"
+                  className="mt-[3px] flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
                   style={{
                     background: kept ? 'var(--color-affirm-wash)' : 'var(--color-decline-wash)',
                     color: kept ? 'var(--color-affirm)' : 'var(--color-decline)',
                   }}
                 >
-                  {kept ? <Check size={13} /> : <Cross size={12} />}
+                  {kept ? <Check size={11} /> : <Cross size={10} />}
                 </span>
                 <span className="type-h3 leading-snug hyphens-auto break-words">{p.thing}</span>
               </button>
@@ -153,7 +155,7 @@ export function PracticeCards({ editable = true }: { editable?: boolean }) {
 
       {editable && (
         <p className="type-caption mt-3 text-[0.75rem]">
-          Tap a card to read it. Drag the handle to move it.
+          Tap a card to read it.
         </p>
       )}
 
@@ -219,16 +221,18 @@ function CardDetail({ id, onClose }: { id: string; onClose: () => void }) {
         className="paper-grain surface-raised relative flex h-full w-full flex-col overflow-hidden"
       >
         <div className="scroll-quiet relative z-1 min-h-0 flex-1 overflow-y-auto px-6 pt-6 pb-4">
-          <span
-            className="mb-3 flex h-7 w-7 items-center justify-center rounded-full"
-            style={{
-              background: kept ? 'var(--color-affirm-wash)' : 'var(--color-decline-wash)',
-              color: kept ? 'var(--color-affirm)' : 'var(--color-decline)',
-            }}
-          >
-            {kept ? <Check size={15} /> : <Cross size={14} />}
-          </span>
-          <h3 className="type-h1">{p.thing}</h3>
+          <div className="flex items-start gap-3">
+            <span
+              className="mt-[7px] flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+              style={{
+                background: kept ? 'var(--color-affirm-wash)' : 'var(--color-decline-wash)',
+                color: kept ? 'var(--color-affirm)' : 'var(--color-decline)',
+              }}
+            >
+              {kept ? <Check size={15} /> : <Cross size={14} />}
+            </span>
+            <h3 className="type-h1">{p.thing}</h3>
+          </div>
           <hr className="hairline my-6" />
 
           <BargainRows

@@ -33,6 +33,24 @@ export function Document() {
   }
 
   /**
+   * Bring a panel to where the eye already is.
+   *
+   * Pinning a heading to the very top of the screen is the right move when
+   * the family is arriving at a whole section, and the wrong one when they
+   * have just applied something and want to read it — that throws the page
+   * to the top and leaves the thing they asked for below the fold. This
+   * parks the panel a fifth of the way down instead.
+   */
+  const centre = (panel: PanelId) => {
+    const el = scroller.current
+    const node = el?.querySelector<HTMLElement>(`[data-panel="${panel}"]`)
+    if (!el || !node) return
+    const offset =
+      el.scrollTop + node.getBoundingClientRect().top - el.getBoundingClientRect().top
+    el.scrollTo({ top: Math.max(0, offset - el.clientHeight * 0.2), behavior: 'auto' })
+  }
+
+  /**
    * Go to a section, now.
    *
    * The page jumps — no easing to sit through. The repeats are not a second
@@ -51,11 +69,16 @@ export function Document() {
    * Everything closes, the destination opens, the page goes there. A
    * sub-section has to name its parent too — Praxis lives inside Family
    * Portrait, and opening it while the Portrait is shut would leave the
-   * family looking at nothing.
+   * family looking at nothing. The last panel named is the one they asked
+   * for, so that is the one the page settles on.
    */
-  const reveal = (section: SectionId, open: PanelId[]) => {
+  const reveal = (open: PanelId[]) => {
+    const target = open[open.length - 1]
     dispatch({ type: 'focusPanel', open })
-    goTo(section)
+    /* A closed section has not rendered its sub-sections yet, so the panel
+       being aimed at does not exist on the first pass and the page is still
+       growing on the second. The later passes land it. */
+    ;[0, 60, 180, 340, 560].forEach((ms) => window.setTimeout(() => centre(target), ms))
   }
 
   /* An activity that has just handed its result back asks for a section by
@@ -175,7 +198,7 @@ export function Document() {
                 </Definition>
               }
             >
-              <PraxisSection onRevisit={() => reveal('practices', ['practices'])} />
+              <PraxisSection onRevisit={() => reveal(['practices'])} />
             </Part>
 
             <Part
@@ -196,7 +219,7 @@ export function Document() {
                 </Definition>
               }
             >
-              <TelosSection onRevisit={() => reveal('values', ['values'])} />
+              <TelosSection onRevisit={() => reveal(['values'])} />
             </Part>
           </Section>
 
@@ -213,7 +236,7 @@ export function Document() {
             }
             locked={!unlocked('practices')}
           >
-            <PracticesSection onApplyToPraxis={() => reveal('portrait', ['portrait', 'praxis'])} />
+            <PracticesSection onApplyToPraxis={() => reveal(['portrait', 'praxis'])} />
           </Section>
 
           <Section
@@ -229,7 +252,7 @@ export function Document() {
             }
             locked={!unlocked('values')}
           >
-            <ValuesSection onApplyToTelos={() => reveal('portrait', ['portrait', 'telos'])} />
+            <ValuesSection onApplyToTelos={() => reveal(['portrait', 'telos'])} />
           </Section>
 
           {/* The epilogue is never shown greyed. It is not a section the
@@ -293,7 +316,7 @@ function Section({
 
   if (locked) {
     return (
-      <section data-section={id} className="pt-14">
+      <section data-section={id} data-panel={panel} className="pt-14">
         <div className="pointer-events-none select-none opacity-[0.34]">
           <p className="type-eyebrow mb-3">{eyebrow}</p>
           <div className="flex items-center gap-2.5">
@@ -309,7 +332,7 @@ function Section({
   }
 
   return (
-    <section data-section={id} className="scroll-mt-4 pt-14 first:pt-0">
+    <section data-section={id} data-panel={panel} className="scroll-mt-4 pt-14 first:pt-0">
       <p className="type-eyebrow mb-3">{eyebrow}</p>
 
       <button
@@ -377,7 +400,7 @@ function Part({
      open yet only gives the family something to scroll past. */
   if (locked) {
     return (
-      <div className="border-t border-[var(--color-rule)] py-6 first:border-t-0 first:pt-0">
+      <div data-panel={panel} className="border-t border-[var(--color-rule)] py-6 first:border-t-0 first:pt-0">
         <div className="pointer-events-none flex select-none items-center gap-2.5 opacity-[0.34]">
           <span className="w-[13px]" aria-hidden="true" />
           <h3 className="type-h2">{title}</h3>
@@ -390,7 +413,7 @@ function Part({
   }
 
   return (
-    <div className="border-t border-[var(--color-rule)] py-6 first:border-t-0 first:pt-0">
+    <div data-panel={panel} className="border-t border-[var(--color-rule)] py-6 first:border-t-0 first:pt-0">
       <button
         type="button"
         onClick={() => dispatch({ type: 'togglePanel', panel })}
