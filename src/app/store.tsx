@@ -160,11 +160,16 @@ export type ActivityId = 'origin' | 'practices' | 'values' | null
 /** 'primer' opens the teaching page on its own, with nothing to complete. */
 export type ActivityMode = 'run' | 'primer'
 
+/** The document, shown as the family will take it away. */
+export type SheetId = 'text' | 'pdf' | null
+
 type Nav = {
   stage: Stage
   /** Where the document should land when it opens. Consumed once. */
   jumpTo: SectionId | null
   activity: ActivityId
+  /** Which take-away sheet is open over everything, if any. */
+  sheet: SheetId
   /**
    * How the activity opens.
    *
@@ -189,6 +194,8 @@ type Store = {
   openDocument: (section?: SectionId) => void
   clearJump: () => void
   openActivity: (id: Exclude<ActivityId, null>, mode?: ActivityMode) => void
+  openSheet: (id: Exclude<SheetId, null>) => void
+  closeSheet: () => void
   closeActivity: () => void
   unlocked: (section: SectionId) => boolean
   isOpen: (panel: PanelId) => boolean
@@ -216,6 +223,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     jumpTo: null,
     activity: null,
     activityMode: 'run',
+    sheet: null,
   })
 
   useEffect(() => {
@@ -247,6 +255,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setNav((n) => ({ ...n, activity: id, activityMode: mode }))
   }, [])
   const closeActivity = useCallback(() => setNav((n) => ({ ...n, activity: null })), [])
+  const openSheet = useCallback(
+    (id: Exclude<SheetId, null>) => setNav((n) => ({ ...n, sheet: id })),
+    [],
+  )
+  const closeSheet = useCallback(() => setNav((n) => ({ ...n, sheet: null })), [])
 
   const unlocked = useCallback(
     (section: SectionId) => {
@@ -287,6 +300,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       clearJump,
       openActivity,
       closeActivity,
+      openSheet,
+      closeSheet,
       unlocked,
       isOpen,
       participantName,
@@ -301,6 +316,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       clearJump,
       openActivity,
       closeActivity,
+      openSheet,
+      closeSheet,
       unlocked,
       isOpen,
       participantName,

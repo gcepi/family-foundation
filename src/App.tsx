@@ -9,6 +9,7 @@ import { Document } from '~/document/Document'
 import { OriginPopup } from '~/activities/OriginPopup'
 import { PracticesPopup } from '~/activities/PracticesPopup'
 import { ValuesPopup } from '~/activities/ValuesPopup'
+import { PdfSheet, TextSheet } from '~/document/ExportSheets'
 
 /**
  * Two stages and an overlay.
@@ -18,7 +19,7 @@ import { ValuesPopup } from '~/activities/ValuesPopup'
  * sliding past each other.
  */
 function Stages() {
-  const { nav } = useStore()
+  const { nav, closeSheet } = useStore()
 
   return (
     <>
@@ -82,6 +83,11 @@ function Stages() {
         {nav.activity === 'origin' && <OriginPopup key="a-origin" />}
         {nav.activity === 'practices' && <PracticesPopup key="a-practices" />}
         {nav.activity === 'values' && <ValuesPopup key="a-values" />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {nav.sheet === 'text' && <TextSheet key="s-text" onClose={closeSheet} />}
+        {nav.sheet === 'pdf' && <PdfSheet key="s-pdf" onClose={closeSheet} />}
       </AnimatePresence>
     </>
   )

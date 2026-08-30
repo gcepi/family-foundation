@@ -4,7 +4,6 @@ import { useStore } from '~/app/store'
 import { Screen } from '~/app/Shell'
 import { FamilyPhoto } from '~/components/FamilyPhoto'
 import { ArrowRight, Check, Lock } from '~/components/Bits'
-import { downloadMarkdown } from '~/lib/export'
 import type { SectionId } from '~/lib/types'
 
 type Row = {
@@ -14,7 +13,7 @@ type Row = {
 }
 
 export function Cover() {
-  const { doc, dispatch, openDocument, goSetup, goPrompts, unlocked } = useStore()
+  const { doc, dispatch, openDocument, goSetup, goPrompts, openSheet, unlocked } = useStore()
   const [confirming, setConfirming] = useState(false)
   const c = doc.completed
 
@@ -156,7 +155,7 @@ export function Cover() {
           <div className="pt-8">
             <button
               type="button"
-              onClick={() => downloadMarkdown(doc)}
+              onClick={() => openSheet('text')}
               className="btn btn-ghost w-full"
             >
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -174,7 +173,7 @@ export function Cover() {
                   strokeLinecap="round"
                 />
               </svg>
-              Download Markdown
+              Text version
             </button>
           </div>
         )}

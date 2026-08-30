@@ -2,7 +2,6 @@ import { useStore } from '~/app/store'
 import { useStub } from '~/components/Stub'
 import { Blank } from '~/components/Bits'
 import { InlineEdit } from '~/components/InlineEdit'
-import { downloadMarkdown } from '~/lib/export'
 
 /** "A", "A and B", "A, B, and C" — as separate pieces, so each name can be edited. */
 function joiners(count: number): string[] {
@@ -43,7 +42,7 @@ function longDate(iso: string): string {
  * act — there is one copy of it, not two.
  */
 export function Signatures() {
-  const { doc, dispatch } = useStore()
+  const { doc, dispatch, openSheet } = useStore()
   const stub = useStub()
 
   const family = doc.origin.familyName.trim()
@@ -121,11 +120,18 @@ export function Signatures() {
       </p>
 
       <div className="print-hide mt-9 flex flex-col gap-2.5">
-        <button type="button" className="btn btn-primary w-full" onClick={() => window.print()}>
-          Download PDF
+        {/* Neither of these downloads anything. They open the document, and
+            the saving happens from in there, where you can see what you are
+            about to be handed. */}
+        <button
+          type="button"
+          className="btn btn-primary w-full"
+          onClick={() => openSheet('pdf')}
+        >
+          PDF version
         </button>
-        <button type="button" className="btn btn-ghost w-full" onClick={() => downloadMarkdown(doc)}>
-          Download Markdown
+        <button type="button" className="btn btn-ghost w-full" onClick={() => openSheet('text')}>
+          Text version
         </button>
         <button
           type="button"

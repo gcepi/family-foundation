@@ -3,7 +3,7 @@ import { AnimatePresence, Reorder, motion, useDragControls } from 'framer-motion
 import { useStore } from '~/app/store'
 import { FoodForThought } from '~/components/FoodForThought'
 import { valueById } from '~/data/values'
-import { composeValuesReflection, think } from '~/lib/assistant'
+import { valuesReflectionFor } from '~/lib/generate'
 
 /**
  * After the sort, the values come home to the document.
@@ -172,13 +172,11 @@ function Reading({ onApplyToTelos }: { onApplyToTelos: () => void }) {
   const run = () => {
     setPending(true)
     const forTop = doc.valueRanking.slice(0, 3)
-    think(() => composeValuesReflection(doc.valueRanking, doc.origin.familyName), 2000).then(
-      (text) => {
-        dispatch({ type: 'setValuesReflection', text })
-        setWrittenFor(forTop)
-        setPending(false)
-      },
-    )
+    valuesReflectionFor(doc.valueRanking, doc.origin.familyName, doc.prompts).then((text) => {
+      dispatch({ type: 'setValuesReflection', text })
+      setWrittenFor(forTop)
+      setPending(false)
+    })
   }
 
   useEffect(() => {

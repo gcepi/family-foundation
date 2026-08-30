@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useStore } from '~/app/store'
 import { PracticeCards } from '~/document/PracticeCards'
 import { FoodForThought } from '~/components/FoodForThought'
-import { composeBargain, composePracticesReflection, think } from '~/lib/assistant'
+import { bargainFor, practicesReflectionFor } from '~/lib/generate'
 
 const uid = () => Math.random().toString(36).slice(2, 10)
 
@@ -43,14 +43,15 @@ export function PracticesSection({ onApplyToPraxis }: { onApplyToPraxis: () => v
 
 /** Beyond the one-per-participant round, families keep thinking of more. */
 function AddPractice() {
-  const { dispatch, openActivity } = useStore()
+  const { doc, dispatch, openActivity } = useStore()
   const [open, setOpen] = useState(false)
   const [thing, setThing] = useState('')
   const [relief, setRelief] = useState('')
+  const [working, setWorking] = useState(false)
 
-  const ready = thing.trim() && relief.trim()
+  const ready = thing.trim() && relief.trim() && !working
 
-  const add = () => {
+  const add = async () => {
     /* No participant is attached to a practice added by hand. The assistant
        falls back to language that does not assume who is speaking. */
     const practice = {
@@ -61,9 +62,12 @@ function AddPractice() {
       bargain: null,
       decision: 'pending' as const,
     }
-    dispatch({ type: 'addPractice', practice: { ...practice, bargain: composeBargain(practice) } })
+    setWorking(true)
+    const bargain = await bargainFor(practice, undefined, doc.prompts)
+    dispatch({ type: 'addPractice', practice: { ...practice, bargain } })
     setThing('')
     setRelief('')
+    setWorking(false)
     setOpen(false)
     openActivity('practices')
   }
@@ -135,9 +139,9 @@ function AddPractice() {
           type="button"
           className="btn btn-primary flex-1 !py-2.5 !text-[0.85rem]"
           disabled={!ready}
-          onClick={add}
+          onClick={() => void add()}
         >
-          Consider tradeoffs
+          {working ? 'Thinking…' : 'Consider tradeoffs'}
         </button>
       </div>
     </div>
@@ -171,9 +175,11 @@ function Reading({ onApplyToPraxis }: { onApplyToPraxis: () => void }) {
     inFlight.current = signature
     setPending(true)
     let live = true
-    think(
-      () => composePracticesReflection(doc.practices, doc.participants, doc.origin.familyName),
-      2000,
+    practicesReflectionFor(
+      doc.practices,
+      doc.participants,
+      doc.origin.familyName,
+      doc.prompts,
     ).then((text) => {
       if (!live) return
       wroteFor.current = signature

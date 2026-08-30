@@ -6,7 +6,7 @@ import { Check, Cross, Ticks } from '~/components/Bits'
 import { Thinking } from '~/components/Assistant'
 import { RuleWithTick } from '~/illustrations'
 import { DOMAINS } from '~/data/domains'
-import { composeBargain, think } from '~/lib/assistant'
+import { bargainFor } from '~/lib/generate'
 import { BargainRows } from '~/document/BargainRows'
 import type { Practice } from '~/lib/types'
 
@@ -74,10 +74,18 @@ export function PracticesPopup() {
     /* The bargain depends on who is speaking: a child automating homework
        gives up something different from an adult automating it. */
     const standingOf = (id: string) => people.find((x) => x.id === id)?.standing
-    think(
-      () => built.map((p) => ({ ...p, bargain: composeBargain(p, standingOf(p.participantId)) })),
-      2600,
-    ).then((withBargains) => {
+    /* The floor keeps the wait from flickering past when the answers come
+       from the written library instead of the model. */
+    const floor = new Promise((resolve) => setTimeout(resolve, 1600))
+    Promise.all([
+      Promise.all(
+        built.map(async (p) => ({
+          ...p,
+          bargain: await bargainFor(p, standingOf(p.participantId), doc.prompts),
+        })),
+      ),
+      floor,
+    ]).then(([withBargains]) => {
       if (!live) return
       /* Coming back through the activity is another round, not a redo: the
          bargains the family already settled stay on the page. */
