@@ -325,7 +325,7 @@ function BargainPrimer() {
       <RuleWithTick className="my-5" />
 
       <p className="prose-editorial">
-        Every automation, every innovation, every technology has trade-offs.
+        Every automation, every innovation, and every technology has trade-offs.
       </p>
 
       <p className="prose-editorial mt-4">

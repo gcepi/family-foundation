@@ -42,6 +42,7 @@ type Action =
   | { type: 'setTelos'; text: string }
   | { type: 'setRanking'; ranking: string[] }
   | { type: 'completeValues' }
+  | { type: 'completeDocument' }
   | { type: 'setPrompt'; id: string; text: string }
   | { type: 'setSignature'; id: string; name: string }
   | { type: 'setCreatedOn'; date: string }
@@ -107,6 +108,8 @@ function reducer(state: FamilyDocument, action: Action): FamilyDocument {
       return { ...state, valueRanking: action.ranking }
     case 'completeValues':
       return { ...state, completed: { ...state.completed, values: true } }
+    case 'completeDocument':
+      return { ...state, completed: { ...state.completed, document: true } }
     case 'setPrompt':
       return { ...state, prompts: { ...state.prompts, [action.id]: action.text } }
     case 'setSignature':

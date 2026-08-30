@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useStore } from '~/app/store'
 import { Screen } from '~/app/Shell'
 import { FamilyPhoto } from '~/components/FamilyPhoto'
-import { ArrowRight, Box, Check, Lock } from '~/components/Bits'
+import { ArrowRight, Check, Lock } from '~/components/Bits'
 import { downloadMarkdown } from '~/lib/export'
 import type { SectionId } from '~/lib/types'
 
@@ -32,7 +32,7 @@ export function Cover() {
     {
       id: 'values',
       title: 'Family Values',
-      blurb: 'Ordering the things we value point toward the life we are looking for.',
+      blurb: 'The things we value point toward the life we are looking for.',
     },
   ]
 
@@ -123,14 +123,12 @@ export function Cover() {
                           <span className="text-[var(--color-muted)]">
                             <Lock size={14} />
                           </span>
-                        ) : s === 'done' ? (
-                          <span className="text-[var(--color-affirm)]">
-                            <Check size={16} />
-                          </span>
                         ) : (
-                          <span className="text-[var(--color-muted)]">
-                            <Box size={14} />
-                          </span>
+                          s === 'done' && (
+                            <span className="text-[var(--color-affirm)]">
+                              <Check size={16} />
+                            </span>
+                          )
                         )}
                       </span>
 
@@ -154,7 +152,7 @@ export function Cover() {
           </>
         )}
 
-        {c.values && (
+        {c.document && (
           <div className="pt-8">
             <button
               type="button"

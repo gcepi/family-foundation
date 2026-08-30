@@ -112,6 +112,8 @@ export type FamilyDocument = {
     origin: boolean
     practices: boolean
     values: boolean
+    /** The family called it finished and signed it. */
+    document: boolean
   }
 }
 
@@ -143,5 +145,6 @@ export const emptyDocument = (): FamilyDocument => ({
     origin: false,
     practices: false,
     values: false,
+    document: false,
   },
 })

@@ -55,6 +55,23 @@ export function Signatures() {
   const signed = doc.participants.filter((p) => (doc.signatures[p.id] ?? '').trim())
   const glue = joiners(signed.length)
 
+  /* Finishing is its own act. Until the family says so, the foot of the
+     page is one button and nothing else — signing is not something that
+     happens to them because they answered the last question. */
+  if (!doc.completed.document) {
+    return (
+      <section data-section="signatures" className="print-hide scroll-mt-4 pt-14">
+        <button
+          type="button"
+          className="btn btn-primary w-full"
+          onClick={() => dispatch({ type: 'completeDocument' })}
+        >
+          Complete document
+        </button>
+      </section>
+    )
+  }
+
   return (
     <section data-section="signatures" className="scroll-mt-4 pt-14">
       <p className="type-eyebrow mb-5">Created by</p>

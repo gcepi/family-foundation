@@ -8,7 +8,7 @@ import { TelosSection } from '~/document/sections/TelosSection'
 import { ValuesSection } from '~/document/sections/ValuesSection'
 import { Signatures } from '~/document/Signatures'
 import { Definition } from '~/document/Definition'
-import { Lock, Tick } from '~/components/Bits'
+import { Check, Lock } from '~/components/Bits'
 import { ArrowLeft, IconButton } from '~/components/Bits'
 import type { PanelId, SectionId } from '~/lib/types'
 
@@ -135,9 +135,11 @@ export function Document() {
               title="Origin"
               done={doc.completed.origin}
               note={
-                <Definition term="or·i·gin" sense="the point or place where something begins.">
-                  Our family Origin informs who we are today. Though it is not everything,
-                  knowing where we come from contributes to who we are becoming.
+                <Definition sense="The point or place where something begins.">
+                  {'This activity prompts you to tell the story of when, where, and why ' +
+                    'your family began.\n\nOur family Origin informs who we are today. ' +
+                    'Though it is not everything, knowing where we come from contributes ' +
+                    'to who we are becoming.'}
                 </Definition>
               }
             >
@@ -161,8 +163,7 @@ export function Document() {
               done={!!doc.praxisStatement.trim()}
               note={
                 <Definition
-                  term="prax·is"
-                  sense="the practical application of ideas, lessons, and theory."
+                  sense="The practical application of ideas, lessons, and theory."
                   unlock={
                     doc.praxisStatement.trim()
                       ? undefined
@@ -184,8 +185,7 @@ export function Document() {
               done={!!doc.telosStatement.trim()}
               note={
                 <Definition
-                  term="te·los"
-                  sense="the ultimate goal, end, or vision of the good life that we aim to live toward."
+                  sense="The ultimate goal, end, or vision of the good life that we aim to live toward."
                   unlock={
                     doc.telosStatement.trim()
                       ? undefined
@@ -324,7 +324,7 @@ function Section({
         <h2 className="type-h1">{title}</h2>
         {done && (
           <span className="text-[var(--color-affirm)]">
-            <Tick size={17} delay={0.45} />
+            <Check size={17} />
           </span>
         )}
       </button>
@@ -403,7 +403,7 @@ function Part({
         <h3 className="type-h2">{title}</h3>
         {done && (
           <span className="text-[var(--color-affirm)]">
-            <Tick size={14} delay={0.45} />
+            <Check size={14} />
           </span>
         )}
       </button>

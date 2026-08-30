@@ -143,7 +143,7 @@ export function OriginPopup() {
                 className="field-area mt-3"
                 rows={2}
                 value={o.startedWhen}
-                placeholder="e.g., On this date; during a season; when this moment happened"
+                placeholder="In the summer of 1994"
                 onChange={(e) => patch({ startedWhen: e.target.value })}
               />
             </Bullet>
@@ -160,7 +160,7 @@ export function OriginPopup() {
                 className="field-area mt-3"
                 rows={2}
                 value={o.startedWhere}
-                placeholder="e.g., In the city of; at this building; amongst family"
+                placeholder="At a farmhouse outside Waco"
                 onChange={(e) => patch({ startedWhere: e.target.value })}
               />
             </Bullet>
@@ -174,7 +174,7 @@ export function OriginPopup() {
                 className="field-area mt-3"
                 rows={2}
                 value={o.startedWhy}
-                placeholder="e.g., They loved each other; they believed in something bigger; they hoped for a better future"
+                placeholder="They wanted a place to come back to"
                 onChange={(e) => patch({ startedWhy: e.target.value })}
               />
             </Bullet>
