@@ -3,13 +3,13 @@ import { valueById } from '~/data/values'
 import { decap } from '~/lib/assistant'
 
 /**
- * The foundation, written out.
+ * The foundation, written out for a machine to read.
  *
- * Same headings, same definitions, same sentences the family read on the
- * page — so what they carry away is recognisably the thing they made. The
- * note at the top is the one addition: this file is meant to be handed to
- * an assistant as standing context, and an assistant that opens it should
- * be told what it is holding before it reads a word of it.
+ * This is not the PDF in plain text — it is the same facts, organized for
+ * whatever assistant the family pastes it into. It opens by explaining
+ * itself, because nothing else in the file will, and it closes wherever the
+ * family's own activities stopped rather than padding out a section they
+ * have not reached yet.
  */
 
 /** "A", "A and B", "A, B, and C". */
@@ -19,16 +19,6 @@ const nameSentence = (names: string[]): string => {
   if (n.length === 1) return n[0]
   if (n.length === 2) return `${n[0]} and ${n[1]}`
   return `${n.slice(0, -1).join(', ')}, and ${n[n.length - 1]}`
-}
-
-const longDate = (iso: string): string => {
-  const [y, m, d] = iso.split('-').map(Number)
-  if (!y || !m || !d) return ''
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
 }
 
 /** The origin sentence, exactly as the page assembles it. */
@@ -46,47 +36,65 @@ export function preambleText(doc: FamilyDocument): string {
 }
 
 export function toMarkdown(doc: FamilyDocument): string {
-  const o = doc.origin
-  const family = o.familyName.trim() || '____'
+  const family = doc.origin.familyName.trim() || '____'
   const order = doc.practiceOrder.length ? doc.practiceOrder : doc.practices.map((p) => p.id)
   const practices = order
     .map((id) => doc.practices.find((p) => p.id === id))
     .filter(Boolean) as FamilyDocument['practices']
-  const signed = doc.participants
-    .map((p) => (doc.signatures[p.id] ?? '').trim())
-    .filter(Boolean)
-  const created = longDate(doc.createdOn) || '____'
 
   const out: string[] = []
 
-  out.push(`# The ${family} Family Foundation`, '')
+  /* ---- Overview — the only part written to the assistant, not the family ---- */
+  out.push('# Overview', '')
   out.push(
-    `> This is the ${family} family's foundation. They wrote it themselves, in three sittings,`,
-    '> and it says who they are, how they intend to live alongside technology, and what they',
-    '> are aiming at. If you are an AI assistant, read this as standing context rather than as',
-    '> a task: it describes the people you are working for. Where something they have asked you',
-    '> to do runs against what is written here, say so plainly and ask them about it. Their',
-    "> Praxis is how they want to act; their Telos is what they are acting toward. Keep the",
-    '> family\'s own words when you quote this back to them.',
+    `This document outlines the philosophical foundation of the ${family} family when using ` +
+      'technology like AI.',
+    '',
+  )
+  out.push('The document includes three sections with the following purposes:', '')
+  out.push(
+    '1. **Family Portrait**: Describes who the family is, the type of people they are ' +
+      'becoming, and how they will get there.',
+  )
+  out.push(
+    '2. **Family Practices**: Supports the family Praxis by providing examples of ' +
+      'technology they embrace, reject, and reasons why.',
+  )
+  out.push(
+    '3. **Family Values**: Informs the family Telos by prioritizing their values when ' +
+      'engaging with AI.',
+    '',
+  )
+  out.push(
+    'The purpose of this comprehensive document is to guide all AI when interacting with ' +
+      'members of this family. This document seeks to provide sufficient data, context, and ' +
+      'examples for the AI to know when to provide a straight answer and when to provide ' +
+      'mental scaffolding for creative thinking, problem solving, and decision making.',
+    '',
+  )
+  out.push(
+    'Before all chat sessions, read this entire document and understand the type of family, ' +
+      'who they are becoming, and how you can support the user as an instrument that amplifies ' +
+      'their critical thinking, not a superpower or a magical device that replaces it.',
     '',
   )
 
   /* ---- Family Portrait ---- */
-  out.push('## Family Portrait', '')
+  out.push(`# ${family} Family Portrait`, '')
   out.push('A picture of who we are, who we are becoming, and how we will get there.', '')
 
-  out.push('### Origin', '')
+  out.push('## Origin', '')
   out.push('*The point or place where something begins.*', '')
   out.push(preambleText(doc), '')
 
   if (doc.praxisStatement.trim()) {
-    out.push('### Praxis', '')
+    out.push('## Praxis', '')
     out.push('*The practical application of ideas, lessons, and theory.*', '')
     out.push(doc.praxisStatement.trim(), '')
   }
 
   if (doc.telosStatement.trim()) {
-    out.push('### Telos', '')
+    out.push('## Telos', '')
     out.push(
       '*The ultimate goal, end, or vision of the good life that we aim to live toward.*',
       '',
@@ -96,17 +104,17 @@ export function toMarkdown(doc: FamilyDocument): string {
 
   /* ---- Family Practices ---- */
   if (practices.length) {
-    out.push('## Family Practices', '')
+    out.push(`# ${family} Family Practices`, '')
     out.push(
-      'Considering technology in light of its consequences for ourselves and others. Each of',
-      'these is a bargain this family weighed in full: what it makes possible, what it relieves,',
-      'what it costs, and what it then asks of them.',
+      'Examples of technological innovation that we accept and reject after considering the ' +
+        'consequences. These are examples of things we want to protect and accept and should ' +
+        'be respected when similar situations arise in conversation.',
       '',
     )
 
     for (const p of practices) {
       const kept = p.decision !== 'refused'
-      out.push(`### ${p.thing.trim()} — ${kept ? 'accepted' : 'refused'}`, '')
+      out.push(`## ${p.thing.trim()} — ${kept ? 'accepted' : 'refused'}`, '')
       if (kept) {
         out.push(`- **Now we can** automate ${decap(p.thing)}`)
         out.push(`- **So we'll no longer have to** ${decap(p.relief)}`)
@@ -119,38 +127,23 @@ export function toMarkdown(doc: FamilyDocument): string {
         out.push(`- **So we still can** ${p.bargain?.alsoKeeps ?? '____'}`, '')
       }
     }
-
-    if (doc.practicesReflection.trim()) {
-      out.push('**Consider this.** ' + doc.practicesReflection.trim(), '')
-    }
   }
 
   /* ---- Family Values ---- */
   if (doc.valueRanking.length) {
-    out.push('## Family Values', '')
-    out.push('The things we value point toward the life we are looking for.', '')
+    out.push(`# ${family} Family Values`, '')
+    out.push(
+      'This is a prioritized list of values that we seek to uphold when engaging with ' +
+        'technology like AI. These values represent the type of people that we want to ' +
+        'become, and they should always be honored in spite of compromises.',
+      '',
+    )
     doc.valueRanking.forEach((id, i) => {
       const v = valueById(id)
       if (v) out.push(`${i + 1}. **${v.title}** — ${v.blurb.replace(/\.$/, '')}`)
     })
     out.push('')
-    out.push('The first three are the ones that inform the Telos above.', '')
-
-    if (doc.valuesReflection.trim()) {
-      out.push('**Consider this.** ' + doc.valuesReflection.trim(), '')
-    }
   }
-
-  /* ---- Created by ---- */
-  out.push('## Created by', '')
-  for (const p of doc.participants) {
-    out.push(`- ${(doc.signatures[p.id] ?? '').trim() || p.name}`)
-  }
-  out.push('')
-  out.push(
-    `The ${family} Family Foundation was created by ${nameSentence(signed) || '____'} on ${created}.`,
-    '',
-  )
 
   return out.join('\n')
 }

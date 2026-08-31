@@ -4,13 +4,14 @@ import type { Block } from '~/lib/sheet'
  * A small PDF writer.
  *
  * Enough of the format to set this one document well and nothing more: the
- * fourteen fonts every reader already has, one text state, straight rules.
- * No library, because the alternative was three hundred kilobytes of one to
- * lay out four page types.
+ * fourteen fonts every reader already has, one text state, straight rules,
+ * one embedded photo. No library, because the alternative was three hundred
+ * kilobytes to lay out four page types.
  *
  * The brand faces cannot come along — embedding a variable woff2 is a
  * different project — so the saved file is set in Times and Helvetica, which
- * keep the same serif-and-small-caps relationship the page has.
+ * keep the same serif-and-small-caps relationship the page has. The paper
+ * colour, on the other hand, is exact: this is the app's own background.
  */
 
 const PAGE_W = 612
@@ -18,6 +19,8 @@ const PAGE_H = 792
 const MARGIN = 64
 const COL = PAGE_W - MARGIN * 2
 
+/** The app's own palette, from design/theme.css, as 0–1 PDF colour. */
+const PAPER: RGB = [0.953, 0.933, 0.875]
 const INK: RGB = [0.145, 0.137, 0.129]
 const MUTED: RGB = [0.467, 0.451, 0.424]
 const RULE: RGB = [0.804, 0.784, 0.741]
@@ -50,11 +53,11 @@ const CSS_FONT: Record<Face, string> = {
 
 /** Widths come from the browser, which has the same faces the reader will. */
 let ctx: CanvasRenderingContext2D | null = null
-function measure(text: string, face: Face, size: number, tracking = 0): number {
+function measure(text: string, face: Face, size: number): number {
   if (!ctx) ctx = document.createElement('canvas').getContext('2d')
   if (!ctx) return text.length * size * 0.5
   ctx.font = `${size}px ${CSS_FONT[face]}`
-  return ctx.measureText(text).width + tracking * text.length
+  return ctx.measureText(text).width
 }
 
 function wrap(text: string, face: Face, size: number, width: number): string[] {
@@ -104,6 +107,42 @@ function pdfString(text: string): string {
 
 type Op = string
 
+/**
+ * A JPEG, ready to be embedded — decoded once, sized once, drawn many times
+ * (only ever once in practice, but the pipeline does not need to know that).
+ */
+type Photo = {
+  /** Raw file bytes as a binary string — one JS character per byte. */
+  bytes: string
+  pixelWidth: number
+  pixelHeight: number
+}
+
+function loadPhoto(dataUrl: string): Promise<Photo> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1)
+      resolve({ bytes: atob(base64), pixelWidth: img.naturalWidth, pixelHeight: img.naturalHeight })
+    }
+    img.onerror = () => reject(new Error('Could not read the family photo.'))
+    img.src = dataUrl
+  })
+}
+
+/** The photo's size on the page — full column width, capped so it reads as a photo, not a cover. */
+function photoBox(photo: Photo): { dw: number; dh: number; x: number } {
+  const aspect = photo.pixelWidth / photo.pixelHeight
+  let dw = COL
+  let dh = COL / aspect
+  const CAP = 260
+  if (dh > CAP) {
+    dh = CAP
+    dw = CAP * aspect
+  }
+  return { dw, dh, x: MARGIN + (COL - dw) / 2 }
+}
+
 class Sheet {
   pages: Op[][] = []
   private ops: Op[] = []
@@ -111,6 +150,12 @@ class Sheet {
 
   constructor() {
     this.pages.push(this.ops)
+    this.background()
+  }
+
+  private background() {
+    const [r, g, b] = PAPER
+    this.ops.push(`${r} ${g} ${b} rg 0 0 ${PAGE_W} ${PAGE_H} re f`)
   }
 
   private room(height: number) {
@@ -118,6 +163,7 @@ class Sheet {
     this.ops = []
     this.pages.push(this.ops)
     this.y = PAGE_H - MARGIN
+    this.background()
   }
 
   gap(h: number) {
@@ -131,6 +177,15 @@ class Sheet {
     const [r, g, b] = RULE
     this.ops.push(`${r} ${g} ${b} RG 0.8 w ${MARGIN} ${this.y} m ${PAGE_W - MARGIN} ${this.y} l S`)
     this.y -= 6
+  }
+
+  /** The family photo, at the top of whichever page it lands on. */
+  image(photo: Photo) {
+    const { dw, dh, x } = photoBox(photo)
+    this.room(dh + 10)
+    this.y -= dh
+    this.ops.push(`q ${dw.toFixed(2)} 0 0 ${dh.toFixed(2)} ${x.toFixed(2)} ${this.y.toFixed(2)} cm /Im1 Do Q`)
+    this.y -= 10
   }
 
   /** One run of text, wrapped, at an indent. Returns nothing; advances y. */
@@ -160,11 +215,14 @@ class Sheet {
 
 /* -------------------------------------------------------------------------- */
 
-function draw(blocks: Block[]): Op[][] {
+function draw(blocks: Block[], photo: Photo | null): Op[][] {
   const s = new Sheet()
 
   for (const block of blocks) {
     switch (block.kind) {
+      case 'photo':
+        if (photo) s.image(photo)
+        break
       case 'title':
         s.gap(6)
         s.text(block.text, 'serifBold', 26, INK, { leading: 31 })
@@ -213,8 +271,11 @@ function draw(blocks: Block[]): Op[][] {
 
 /* -------------------------------------------------------------------------- */
 
-export function buildPdf(blocks: Block[]): Blob {
-  const pages = draw(blocks)
+export async function buildPdf(blocks: Block[]): Promise<Blob> {
+  const photoBlock = blocks.find((b): b is Extract<Block, { kind: 'photo' }> => b.kind === 'photo')
+  const photo = photoBlock ? await loadPhoto(photoBlock.src) : null
+
+  const pages = draw(blocks, photo)
   const objects: string[] = []
   const add = (body: string) => {
     objects.push(body)
@@ -236,12 +297,22 @@ export function buildPdf(blocks: Block[]): Blob {
     )
   }
 
+  /* The photo, once — every page's resource dictionary can point at it, but
+     only the page that actually draws it pays it any attention. */
+  const imageId = photo
+    ? add(
+        `<< /Type /XObject /Subtype /Image /Width ${photo.pixelWidth} /Height ${photo.pixelHeight} ` +
+          `/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${photo.bytes.length} >>\n` +
+          `stream\n${photo.bytes}\nendstream`,
+      )
+    : null
+
   const resources =
     '<< /Font << ' +
-    (Object.keys(FONT_KEY) as Face[])
-      .map((face) => `/${FONT_KEY[face]} ${fontIds[face]} 0 R`)
-      .join(' ') +
-    ' >> >>'
+    (Object.keys(FONT_KEY) as Face[]).map((face) => `/${FONT_KEY[face]} ${fontIds[face]} 0 R`).join(' ') +
+    ' >>' +
+    (imageId ? ` /XObject << /Im1 ${imageId} 0 R >>` : '') +
+    ' >>'
 
   const pageIds: number[] = []
   for (const ops of pages) {

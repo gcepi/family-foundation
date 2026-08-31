@@ -71,8 +71,8 @@ export function TextSheet({ onClose }: { onClose: () => void }) {
     >
       <div className="flex h-full flex-col">
         <p className="type-caption mb-3 shrink-0">
-          Every word of your foundation, as plain text. Change anything you like here first —
-          this copy is yours.
+          Review your Foundation document below, make edits as needed, and apply it to any AI
+          conversation by pasting it into your global instructions.
         </p>
         {/* A plain typewriter face on purpose. It is not the document, it is
             the text the document is made of, and it should not pretend
@@ -105,7 +105,8 @@ export function PdfSheet({ onClose }: { onClose: () => void }) {
   }
 
   const save = async () => {
-    const result = await saveFile(pdfFilename(doc), buildPdf(blocks), 'application/pdf')
+    const pdf = await buildPdf(blocks)
+    const result = await saveFile(pdfFilename(doc), pdf, 'application/pdf')
     if (result.reason) say(result.reason)
     else if (result.ok) say('Saved.')
   }
@@ -125,14 +126,15 @@ export function PdfSheet({ onClose }: { onClose: () => void }) {
     >
       <div className="-mx-2">
         <p className="type-caption mx-2 mb-3">
-          This is the whole document on one page, the way it will be saved.
+          Review, save, and print your Foundation document below.
         </p>
         {/* One long sheet rather than paginated slices: the family is
-            reading it here, not proofing a print run. */}
+            reading it here, not proofing a print run. The paper colour is
+            the app's own — this is meant to look like it belongs here. */}
         <div
           className="px-6 py-8"
           style={{
-            background: '#FBF8F0',
+            background: 'var(--color-paper)',
             border: '1px solid var(--color-rule)',
             borderRadius: 'var(--radius-card)',
             boxShadow: '0 14px 34px -22px rgba(37,35,33,0.45)',
@@ -149,6 +151,14 @@ export function PdfSheet({ onClose }: { onClose: () => void }) {
 
 function Line({ block }: { block: Block }) {
   switch (block.kind) {
+    case 'photo':
+      return (
+        <img
+          src={block.src}
+          alt="The family"
+          className="mb-6 block max-h-[280px] w-full rounded-[var(--radius-card)] object-cover"
+        />
+      )
     case 'title':
       return <h1 className="type-h1 mb-1 !text-[1.6rem]">{block.text}</h1>
     case 'rule':
